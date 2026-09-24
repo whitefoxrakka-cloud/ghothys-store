@@ -26,13 +26,13 @@ window.GHOTHYS_NOTIFY_CONFIG = {
 	// === GAYA AMAN (prioritas utama) ===
 
 	// Contoh: 'https://ghothys-notif.xxx.workers.dev'
-	relayUrl: '',
+	relayUrl: 'https://empty-snow-7e64ghothys-notif.whitefox-rakka.workers.dev/',
 
 	// Kata sandi acak panjang yang sama dengan variabel SECRET di worker.
-	relaySecret: '',
+	relaySecret: 'Gh7s-R3lay#2026!K9qZ',
 
 	// === FALLBACK LANGSUNG (hanya jika relay belum dibuat) ===
-
+	// Relay sudah aktif -> kosongkan semua fallback di bawah ini.
 	// Contoh: 'https://discord.com/api/webhooks/1234567890/AbCdEfGhIjKl'
 	discordWebhook: '',
 
