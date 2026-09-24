@@ -3,82 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Login - Ghothys Store</title>
-  <link rel="stylesheet" href="../css/style.css" />
-  <style>
-    body { background: var(--bg-primary); }
-    .admin-card{
-      max-width: 520px;
-      margin: 48px auto;
-      background: var(--bg-card);
-      padding: 28px;
-      border-radius: 16px;
-      box-shadow: var(--shadow);
-    }
-    .admin-title{ font-size: 20px; font-weight: 800; color: var(--text-primary); margin-bottom: 8px; }
-    .form-label{ font-weight: 700; color: var(--text-secondary); display:block; margin: 14px 0 8px; }
-    input{
-      width: 100%;
-      padding: 12px 14px;
-      border-radius: 12px;
-      border: 1px solid var(--border-color);
-      background: var(--bg-primary);
-      color: var(--text-primary);
-      outline: none;
-    }
-    .btn{
-      width: 100%;
-      padding: 12px 14px;
-      border-radius: 12px;
-      background: var(--purple-500, #6d28d9);
-      color: #fff;
-      border: none;
-      font-weight: 800;
-      cursor: pointer;
-      margin-top: 18px;
-    }
-    .btn:disabled{ opacity: .7; cursor: not-allowed; }
-    .spinner{
-      width: 16px; height: 16px;
-      border: 2px solid rgba(255,255,255,.4);
-      border-top-color: #fff;
-      border-radius: 999px;
-      display: inline-block;
-      animation: spin .8s linear infinite;
-      vertical-align: -3px;
-      margin-left: 8px;
-      display: none;
-    }
-    @keyframes spin{ to{ transform: rotate(360deg);} }
-    .hint{ color: var(--text-secondary); font-size: 13px; margin-top: 14px; line-height: 1.4; }
-  </style>
+  <meta http-equiv="refresh" content="0; url=./dashboard.html" />
+  <title>Redirect - Ghothys Store</title>
 </head>
 <body>
-  <div class="admin-card">
-    <div class="admin-title">ADMIN AUTH • GHOTHYS STORE</div>
-    <div style="color:var(--text-secondary); font-weight:600; margin-bottom: 18px;">
-      Login menggunakan email + password
-    </div>
-
-    <form id="login-form">
-      <label class="form-label" for="admin-email">Email</label>
-      <input id="admin-email" type="email" placeholder="admin@ghothys.id" required />
-
-      <label class="form-label" for="admin-password">Password</label>
-      <input id="admin-password" type="password" placeholder="admin123" required />
-
-      <button id="login-btn" type="submit" class="btn">
-        Login
-        <span id="login-spinner" class="spinner"></span>
-      </button>
-
-      <div class="hint">
-        Pastikan header Authorization memakai token setelah login.
-      </div>
-    </form>
-  </div>
-
-  <script src="../admin/js/admin-api.js"></script>
-  <script src="../admin/js/auth.js"></script>
+  <p style="font-family:system-ui; margin:24px;">Menu admin sudah digabung ke Monitoring. Buka <a href="./dashboard.html">dashboard</a>.</p>
+  <script>window.location.replace('./dashboard.html');</script>
 </body>
 </html>

@@ -3,99 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Order Detail - Ghothys Store</title>
-  <link rel="stylesheet" href="../css/style.css" />
-  <style>
-    .admin-shell{ max-width: 1200px; margin: 36px auto; padding: 0 16px; }
-    .admin-topbar{ display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; }
-    .admin-topbar h1{ font-size: 20px; color: var(--text-primary); margin:0; }
-    .panel{ background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; box-shadow: var(--shadow); padding: 16px; }
-    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .field{ padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(0,0,0,.06); background: rgba(109,40,217,.04); }
-    .field .k{ font-size: 12px; font-weight: 900; color: var(--text-secondary); margin-bottom: 6px; }
-    .field .v{ font-size: 16px; font-weight: 900; color: var(--text-primary); word-break: break-word; }
-    .actions{ display:flex; gap: 10px; flex-wrap:wrap; margin-top: 14px; }
-    .btn{
-      padding: 10px 14px; border-radius: 12px; border: none; font-weight: 900;
-      background: var(--bg-card); color: var(--text-primary); box-shadow: var(--shadow);
-      cursor:pointer;
-    }
-    .btn-primary{ background: #6d28d9; color:#fff; }
-    .btn-danger{ background: #ef4444; color:#fff; }
-    .btn:disabled{ opacity:.6; cursor:not-allowed; }
-  </style>
+  <meta http-equiv="refresh" content="0; url=./dashboard.html" />
+  <title>Redirect - Ghothys Store</title>
 </head>
 <body>
-  <div class="admin-shell">
-    <div class="admin-topbar">
-      <h1>GHOTHYS STORE • ORDER DETAIL</h1>
-      <div style="display:flex; gap:10px; align-items:center;">
-        <button class="btn" id="back-orders" type="button">Back</button>
-        <button class="btn" id="logout-btn" type="button">Logout</button>
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="grid2">
-        <div class="field">
-          <div class="k">Order ID</div>
-          <div class="v" id="f-order-id">—</div>
-        </div>
-        <div class="field">
-          <div class="k">Status</div>
-          <div class="v" id="f-status">—</div>
-        </div>
-
-        <div class="field">
-          <div class="k">Customer Name</div>
-          <div class="v" id="f-customer-name">—</div>
-        </div>
-        <div class="field">
-          <div class="k">UID</div>
-          <div class="v" id="f-uid">—</div>
-        </div>
-
-        <div class="field">
-          <div class="k">Game</div>
-          <div class="v" id="f-game">—</div>
-        </div>
-        <div class="field">
-          <div class="k">Server</div>
-          <div class="v" id="f-server">—</div>
-        </div>
-
-        <div class="field">
-          <div class="k">Product</div>
-          <div class="v" id="f-product">—</div>
-        </div>
-        <div class="field">
-          <div class="k">Harga</div>
-          <div class="v" id="f-price">—</div>
-        </div>
-
-        <div class="field">
-          <div class="k">Pembayaran</div>
-          <div class="v" id="f-payment">—</div>
-        </div>
-        <div class="field">
-          <div class="k">Tanggal Dibuat</div>
-          <div class="v" id="f-created-at">—</div>
-        </div>
-      </div>
-
-      <div class="actions">
-        <button class="btn btn-primary" id="btn-process" type="button">Proses</button>
-        <button class="btn btn-primary" id="btn-success" type="button">Selesai</button>
-        <button class="btn btn-danger" id="btn-cancel" type="button">Cancel</button>
-      </div>
-
-      <div class="muted" style="margin-top: 12px; color: var(--text-secondary); font-weight: 800; font-size: 13px;">
-        Success & Cancel bersifat locked (tidak dapat diubah lagi).
-      </div>
-    </div>
-  </div>
-
-  <script src="../admin/js/admin-api.js"></script>
-  <script src="../admin/js/order-detail.js"></script>
+  <p style="font-family:system-ui; margin:24px;">Menu admin sudah digabung ke Monitoring. Buka <a href="./dashboard.html">dashboard</a>.</p>
+  <script>window.location.replace('./dashboard.html');</script>
 </body>
 </html>
