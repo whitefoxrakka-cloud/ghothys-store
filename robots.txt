@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://whitefoxrakka-cloud.github.io/ghothys-store/sitemap.xml
