@@ -1,20 +1,24 @@
 /* ============================================================
    GHOTHYS STORE - RELAY NOTIFIKASI (Cloudflare Worker)
    ------------------------------------------------------------
-   Tugas: menyembunyikan Discord webhook & token Telegram dari
-   file publik, dan hanya meneruskan pesan yang bentuknya ORDER.
+   Tugas:
+   - Menyembunyikan Discord webhook & token Telegram dari repo.
+   - Hanya meneruskan payload yang bentuknya ORDER.
+   - Menyimpan order ke Airtable (database order-an owner).
 
    Deploy:
    1) Buka https://dash.cloudflare.com -> Workers & Pages
-      -> Create -> Worker.
-   2) Hapus kode bawaan, tempel seluruh isi file ini.
-   3) Klik Settings -> Variables, tambahkan variabel:
-        DISCORD_WEBHOOK_URL = <URL webhook Discord kamu>
-        SECRET              = <kata sandi acak yang panjang>
-      (opsional Telegram: TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID)
-   4) Klik Save & Deploy. Salin URL worker (mis.
-      https://ghothys-notif.<kamu>.workers.dev)
-   5) Isi URL + SECRET yang sama ke js/notify-config.js di situs.
+      -> pilih worker kamu -> Edit Code.
+   2) Hapus kode lama, tempel seluruh isi file ini, Deploy.
+   3) Settings -> Runtime variables and secrets:
+        DISCORD_WEBHOOK_URL  = <URL webhook Discord>
+        SECRET               = <kata sandi acak panjang>
+        TELEGRAM_BOT_TOKEN   = <token bot Telegram>
+        TELEGRAM_CHAT_ID     = <chat ID kamu>
+        AIRTABLE_PAT         = <Personal Access Token Airtable>
+        AIRTABLE_BASE_ID     = <ID base, mis. appXLcZqRnd9Lx7Xe>
+        AIRTABLE_TABLE_NAME  = <nama tabel, mis. Orders>
+   4) Save and deploy.
    ============================================================ */
 
 async function sendToDiscord(webhookUrl, text) {
@@ -38,6 +42,41 @@ async function sendToTelegram(token, chatId, text) {
 	const body = await res.json();
 	if (!res.ok || !body.ok) throw new Error('Telegram: ' + (body.description || ('HTTP ' + res.status)));
 	return { ok: true, channel: 'telegram' };
+}
+
+async function saveToAirtable(env, p) {
+	if (!env.AIRTABLE_PAT || !env.AIRTABLE_BASE_ID || !env.AIRTABLE_TABLE_NAME) {
+		return { ok: true, skipped: true, channel: 'airtable' };
+	}
+	const numericPrice = parseInt(p.price, 10);
+	const fields = {
+		'Order ID': p.order_id,
+		'Game': p.game,
+		'UID': p.uid,
+		'Server': p.server || '-',
+		'Item': p.item || '-',
+		'Price': (isFinite(numericPrice) && numericPrice > 0) ? numericPrice : 0,
+		'Payment': p.payment || '-',
+		'Customer': p.customer || '-',
+		'Time': p.time || '',
+		'Status': 'Pending'
+	};
+	const url = 'https://api.airtable.com/v0/' + env.AIRTABLE_BASE_ID + '/' +
+		encodeURIComponent(env.AIRTABLE_TABLE_NAME);
+	const res = await fetch(url, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'Authorization': 'Bearer ' + env.AIRTABLE_PAT
+		},
+		body: JSON.stringify({ fields: fields })
+	});
+	if (!res.ok) {
+		let detail = '';
+		try { const j = await res.json(); detail = (j.error && j.error.message) || ''; } catch (e) {}
+		throw new Error('Airtable HTTP ' + res.status + (detail ? ' ' + detail : ''));
+	}
+	return { ok: true, channel: 'airtable' };
 }
 
 function isValidOrder(p) {
@@ -73,26 +112,22 @@ function formatOrder(p) {
 
 export default {
 	async fetch(request, env) {
-		const url = new URL(request.url);
-		const isCorsPreflight = request.method === 'OPTIONS';
 		const headers = {
 			'Access-Control-Allow-Origin': '*',
 			'Access-Control-Allow-Methods': 'POST, OPTIONS',
 			'Access-Control-Allow-Headers': 'Content-Type, X-Ghothys-Secret',
 			'Content-Type': 'application/json'
 		};
-		if (isCorsPreflight) return new Response(null, { status: 204, headers });
+		if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
 
 		if (request.method !== 'POST') {
 			return new Response(JSON.stringify({ ok: false, error: 'Method not allowed' }), { status: 405, headers });
 		}
 
-		// 1) Cek secret agar hanya situs Ghothys yang sah yang bisa kirim.
 		if (env.SECRET && request.headers.get('X-Ghothys-Secret') !== env.SECRET) {
 			return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 403, headers });
 		}
 
-		// 2) Parsing & validasi: TOLAK jika bukan payload order.
 		let payload;
 		try {
 			payload = await request.json();
@@ -105,6 +140,11 @@ export default {
 
 		const text = formatOrder(payload);
 		const results = [];
+		try {
+			results.push(await saveToAirtable(env, payload));
+		} catch (e) {
+			results.push({ channel: 'airtable', error: e.message });
+		}
 		try {
 			results.push(await sendToDiscord(env.DISCORD_WEBHOOK_URL, text));
 		} catch (e) {
