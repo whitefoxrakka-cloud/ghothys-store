@@ -187,8 +187,8 @@
 
       console.log('[STEP 4] API.createOrder about to call');
 
-      // endpoint/method/headers/payload (createOrder wraps)
-      const endpoint = 'http://localhost:3000/api/order';
+      // Local client-side order creation (no backend required)
+      const endpoint = 'local';
       const method = 'POST';
       const headers = { 'Content-Type': 'application/json' };
       const orderData = {

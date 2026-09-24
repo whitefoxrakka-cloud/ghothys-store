@@ -1,215 +1,254 @@
-/* API Client - Frontend to Backend Integration */
+/* API Client - Client-side implementation (works on static hosting / GitHub Pages) */
+(function () {
+  const API_BASE_URL = ''; // backend optional; all flows run locally
 
-const API_BASE_URL = 'http://localhost:3000/api';
-
-function getAuthHeaders() {
-  const token = localStorage.getItem('ghothys_token');
-  return token ? { 'Authorization': 'Bearer ' + token } : {};
-}
-
-/**
- * Generic fetch wrapper with error handling
- * @param {string} endpoint - API endpoint (e.g., '/order')
- * @param {Object} options - Fetch options
- * @returns {Promise<Object>} API response
- */
-const apiFetch = async (endpoint, options = {}) => {
-  try {
-    const url = `${API_BASE_URL}${endpoint}`;
-    
-    const authHeaders = getAuthHeaders();
-    
-    const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeaders,
-        ...options.headers,
-      },
-      ...options,
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        localStorage.removeItem('ghothys_token');
-        if (typeof window.handleLogout === 'function' && window.currentUser) {
-          window.currentUser = null;
-          localStorage.removeItem('ghothys_current_user');
-          window.updateUI();
-          window.showToast('Sesi Habis', 'Silakan login ulang');
-        }
-      }
-      throw {
-        statusCode: response.status,
-        message: data.message || 'Request failed',
-        data,
-      };
-    }
-
-    return data;
-  } catch (error) {
-    throw error;
+  function getAuthHeaders() {
+    const token = localStorage.getItem('ghothys_token');
+    return token ? { 'Authorization': 'Bearer ' + token } : {};
   }
-};
 
-/**
- * Create a new order
- * @param {Object} orderData - Order data
- * @param {string} orderData.customerName - Customer name
- * @param {string} orderData.game - Game name
- * @param {string} orderData.uid - User ID
- * @param {string} orderData.server - Server/Zone ID
- * @param {string} orderData.product - Product/Package name
- * @param {string|number} orderData.price - Price
- * @param {string} orderData.payment - Payment method
- * @returns {Promise<Object>} Order creation response
- */
-const createOrder = async (orderData) => {
-  console.log('[FRONTEND] [VALIDATION_OK] Order data validated:', orderData);
-  console.log('[FRONTEND] [SENDING_TO_BACKEND] POST /api/order');
+  /* ---- local utilities ---- */
 
-  return apiFetch('/order', {
-    method: 'POST',
-    body: JSON.stringify(orderData),
-  });
-};
+  function uid() {
+    return 'u_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
 
-/**
- * Get all orders
- * @returns {Promise<Object>} Orders list
- */
-const getOrders = async () => {
-  console.log('[FRONTEND] [SENDING_TO_BACKEND] GET /api/order');
-  
-  return apiFetch('/order', {
-    method: 'GET',
-  });
-};
+  function getAllUsers() {
+    try { return JSON.parse(localStorage.getItem(window.STORAGE_KEYS.USERS) || '[]'); }
+    catch (e) { return []; }
+  }
 
-/**
- * Get order by ID
- * @param {string} orderId - Order ID
- * @returns {Promise<Object>} Order details
- */
-const getOrderById = async (orderId) => {
-  console.log('[FRONTEND] [SENDING_TO_BACKEND] GET /api/order/' + orderId);
-  
-  return apiFetch(`/order/${orderId}`, {
-    method: 'GET',
-  });
-};
+  function saveAllUsers(users) {
+    localStorage.setItem(window.STORAGE_KEYS.USERS, JSON.stringify(users));
+  }
 
-/**
- * Send WhatsApp notification (placeholder)
- * @param {string} phone - Phone number
- * @param {string} message - Message content
- * @returns {Promise<Object>} Notification response
- */
-const sendWhatsAppNotification = async (phone, message) => {
-  console.log('[FRONTEND] [SENDING_TO_BACKEND] POST /api/notification/whatsapp');
+  function makeSafeString(str) {
+    return String(str || '').replace(/[^\x20-\x7E]/g, '').trim();
+  }
 
-  return apiFetch('/notification/whatsapp', {
-    method: 'POST',
-    body: JSON.stringify({ phone, message }),
-  });
-};
+  async function hashPassword(password) {
+    const pwd = String(password || '');
+    try {
+      if (window.crypto && window.crypto.subtle) {
+        const buf = new TextEncoder().encode('ghothys:' + pwd);
+        const digest = await window.crypto.subtle.digest('SHA-256', buf);
+        const hex = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+        return hex;
+      }
+    } catch (e) { /* fall through */ }
+    return 'local:' + pwd;
+  }
 
-/**
- * Send Discord notification (placeholder)
- * @param {string} message - Message content
- * @param {Object} embed - Embed object (optional)
- * @returns {Promise<Object>} Notification response
- */
-const sendDiscordNotification = async (message, embed = null) => {
-  console.log('[FRONTEND] [SENDING_TO_BACKEND] POST /api/notification/discord');
+  function buildUser(profile) {
+    const phone = makeSafeString(profile.phone);
+    return {
+      id: uid(),
+      name: makeSafeString(profile.name) || 'Member',
+      nickname: makeSafeString(profile.name) || 'Member',
+      email: makeSafeString(profile.email).toLowerCase(),
+      username: makeSafeString(profile.username).toLowerCase(),
+      phone: phone,
+      points: 0,
+      avatar: '',
+      passwordHash: profile.passwordHash || '',
+      createdAt: new Date().toISOString(),
+      username_last_changed: null
+    };
+  }
 
-  return apiFetch('/notification/discord', {
-    method: 'POST',
-    body: JSON.stringify({ message, embed }),
-  });
-};
+  async function findUserByLogin(login) {
+    const users = getAllUsers();
+    const l = makeSafeString(login).toLowerCase();
+    return users.find(u => u.email === l || (u.username && u.username.toLowerCase() === l)) || null;
+  }
 
-// ── AUTH ──
+  function sign(user) {
+    return 'ghothys.' + btoa(JSON.stringify({ id: user.id, email: user.email, ts: Date.now() }));
+  }
 
-const register = async (data) => {
-  return apiFetch('/auth/register', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-};
+  function toClientUser(u) {
+    const copy = Object.assign({}, u);
+    delete copy.passwordHash;
+    return copy;
+  }
 
-const login = async (data) => {
-  return apiFetch('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-};
+  /* ---- auth ---- */
 
-const getProfile = async () => {
-  return apiFetch('/auth/profile', { method: 'GET' });
-};
+  const register = async (data) => {
+    const name = makeSafeString(data.name);
+    const email = makeSafeString(data.email).toLowerCase();
+    const username = makeSafeString(data.username).toLowerCase();
+    const phone = makeSafeString(data.phone);
+    if (!name || !email || !username) throw { statusCode: 400, message: 'Nama, email dan username wajib diisi' };
+    if (!/^\S+@\S+\.\S+$/.test(email)) throw { statusCode: 400, message: 'Email tidak valid' };
+    const users = getAllUsers();
+    if (users.some(u => u.email === email)) throw { statusCode: 409, message: 'Email sudah terdaftar' };
+    if (users.some(u => u.username === username)) throw { statusCode: 409, message: 'Username sudah digunakan' };
 
-const updateProfile = async (data) => {
-  return apiFetch('/auth/profile', {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-};
+    const passwordHash = await hashPassword(data.password);
+    const user = buildUser({ name, email, username, phone, passwordHash });
+    users.push(user);
+    saveAllUsers(users);
+    const token = sign(user);
+    localStorage.setItem('ghothys_token', token);
+    return { data: { token, user: toClientUser(user) } };
+  };
 
-const changePassword = async (data) => {
-  return apiFetch('/auth/change-password', {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-};
+  const login = async (data) => {
+    const loginId = makeSafeString(data.login);
+    if (!loginId) throw { statusCode: 400, message: 'Email/Username wajib diisi' };
+    const user = await findUserByLogin(loginId);
+    if (!user) throw { statusCode: 401, message: 'Email/Username atau password salah' };
+    const hash = await hashPassword(data.password);
+    if (hash !== user.passwordHash) throw { statusCode: 401, message: 'Email/Username atau password salah' };
+    const token = sign(user);
+    localStorage.setItem('ghothys_token', token);
+    return { data: { token, user: toClientUser(user) } };
+  };
 
-const changeUsername = async (data) => {
-  return apiFetch('/auth/change-username', {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-};
+  const getProfile = async () => {
+    const token = localStorage.getItem('ghothys_token');
+    if (!token) throw { statusCode: 401, message: 'Tidak terautentikasi' };
+    const cached = localStorage.getItem(window.STORAGE_KEYS.CURRENT_USER);
+    if (cached) return { data: JSON.parse(cached) };
+    throw { statusCode: 401, message: 'Sesi tidak ditemukan' };
+  };
 
-const addPoints = async (data) => {
-  return apiFetch('/auth/points', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-};
+  const updateProfile = async (data) => {
+    if (!window.currentUser) throw { statusCode: 401, message: 'Login dulu' };
+    const users = getAllUsers();
+    const i = users.findIndex(u => u.email === window.currentUser.email);
+    if (i === -1) throw { statusCode: 404, message: 'User tidak ditemukan' };
+    if (data.avatar !== undefined) users[i].avatar = data.avatar;
+    if (data.phone !== undefined) users[i].phone = makeSafeString(data.phone);
+    saveAllUsers(users);
+    window.currentUser = toClientUser(users[i]);
+    localStorage.setItem(window.STORAGE_KEYS.CURRENT_USER, JSON.stringify(window.currentUser));
+    return { data: toClientUser(users[i]) };
+  };
 
-const forgotPassword = async (data) => {
-  return apiFetch('/auth/forgot-password', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-};
+  const changePassword = async (data) => {
+    if (!window.currentUser) throw { statusCode: 401, message: 'Login dulu' };
+    const users = getAllUsers();
+    const i = users.findIndex(u => u.email === window.currentUser.email);
+    if (i === -1) throw { statusCode: 404, message: 'User tidak ditemukan' };
+    const oldHash = await hashPassword(data.oldPassword);
+    if (oldHash !== users[i].passwordHash) throw { statusCode: 400, message: 'Password lama salah' };
+    users[i].passwordHash = await hashPassword(data.newPassword);
+    saveAllUsers(users);
+    return { data: { success: true } };
+  };
 
-/**
- * Health check
- * @returns {Promise<Object>} Server health status
- */
-const healthCheck = async () => {
-  return apiFetch('/health', {
-    method: 'GET',
-  });
-};
+  const changeUsername = async (data) => {
+    if (!window.currentUser) throw { statusCode: 401, message: 'Login dulu' };
+    const newU = makeSafeString(data.username).toLowerCase();
+    if (!newU) throw { statusCode: 400, message: 'Username wajib diisi' };
+    const users = getAllUsers();
+    if (users.some(u => u.email !== window.currentUser.email && u.username === newU)) {
+      throw { statusCode: 409, message: 'Username sudah digunakan' };
+    }
+    const i = users.findIndex(u => u.email === window.currentUser.email);
+    users[i].username = newU;
+    users[i].username_last_changed = new Date().toISOString();
+    saveAllUsers(users);
+    const client = toClientUser(users[i]);
+    window.currentUser = client;
+    localStorage.setItem(window.STORAGE_KEYS.CURRENT_USER, JSON.stringify(client));
+    return { data: client };
+  };
 
-// Export all API functions
-window.API = {
-  createOrder,
-  getOrders,
-  getOrderById,
-  sendWhatsAppNotification,
-  sendDiscordNotification,
-  healthCheck,
-  apiFetch,
-  register,
-  login,
-  getProfile,
-  updateProfile,
-  changePassword,
-  changeUsername,
-  addPoints,
-  forgotPassword,
-};
+  const addPoints = async (data) => {
+    if (!window.currentUser) throw { statusCode: 401, message: 'Login dulu' };
+    const pts = parseInt(data.points);
+    if (isNaN(pts) || pts <= 0) throw { statusCode: 400, message: 'Jumlah points tidak valid' };
+    const users = getAllUsers();
+    const i = users.findIndex(u => u.email === window.currentUser.email);
+    users[i].points = (users[i].points || 0) + pts;
+    saveAllUsers(users);
+    window.currentUser = toClientUser(users[i]);
+    localStorage.setItem(window.STORAGE_KEYS.CURRENT_USER, JSON.stringify(window.currentUser));
+    return { data: { points: users[i].points } };
+  };
+
+  const forgotPassword = async () => {
+    // No SMTP available on static hosting; guide user instead.
+    return { data: { ok: true }, message: 'Pada versi statis, hubungi Owner untuk reset password' };
+  };
+
+  /* ---- orders ---- */
+
+  const createOrder = async (orderData) => {
+    const order = window.createOrder({
+      game: orderData.game,
+      uid: orderData.uid,
+      server: orderData.server,
+      item: orderData.product || orderData.item,
+      price: orderData.price,
+      payment: orderData.payment,
+      customerName: orderData.customerName,
+      customerPhone: orderData.customerPhone || ''
+    });
+    // Broadcast notifications, never throw on channel failure
+    try { await window.sendOrderNotifications(order); } catch (e) { console.error('[NOTIFY]', e); }
+    return { success: true, data: { orderId: order.id } };
+  };
+
+  const getOrders = async () => {
+    return { success: true, data: window.getAllOrders ? window.getAllOrders() : [] };
+  };
+
+  const getOrderById = async (orderId) => {
+    const orders = window.getAllOrders ? window.getAllOrders() : [];
+    const order = orders.find(o => o.id === orderId);
+    if (!order) throw { statusCode: 404, message: 'Order tidak ditemukan' };
+    return { success: true, data: order };
+  };
+
+  const sendWhatsAppNotification = async () => {
+    return { success: false, message: 'WhatsApp (Fonnte) telah dihapus. Gunakan Discord/Email/Telegram.' };
+  };
+
+  const sendDiscordNotification = async (message) => {
+    const cfg = window.GHOTHYS_NOTIFY_CONFIG || {};
+    if (cfg.discordWebhook) {
+      try {
+        const res = await fetch(cfg.discordWebhook, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: String(message || '').slice(0, 2000), username: 'Ghothys Store' })
+        });
+        return { success: res.ok };
+      } catch (e) { return { success: false, message: e.message }; }
+    }
+    return { success: false, message: 'Discord webhook belum dikonfigurasi' };
+  };
+
+  const healthCheck = async () => {
+    return { status: 'online', version: '1.1.0', mode: 'static' };
+  };
+
+  // Export all API functions (backward compatible with old callers)
+  window.API = {
+    createOrder,
+    getOrders,
+    getOrderById,
+    sendWhatsAppNotification,
+    sendDiscordNotification,
+    healthCheck,
+    register,
+    login,
+    getProfile,
+    updateProfile,
+    changePassword,
+    changeUsername,
+    addPoints,
+    forgotPassword
+  };
+
+  // Legacy fetch wrapper kept for backward compatibility
+  window.apiFetch = async (endpoint, options = {}) => {
+    const fn = { '/order': createOrder, '/health': healthCheck }[endpoint];
+    if (fn) return fn(options.body ? JSON.parse(options.body) : {});
+    throw { statusCode: 404, message: 'Endpoint tidak tersedia', data: {} };
+  };
+})();

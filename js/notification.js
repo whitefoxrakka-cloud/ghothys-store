@@ -1,10 +1,5 @@
-/* WhatsApp Notification System using Fonnte API */
+/* Order Notification System - multi-channel (Discord, Email via Formspree, Telegram via relay) */
 (function(){
-	// Configuration
-	const FONNTE_API_KEY = '5UyLU4EZ2kLnH4PX4PLd';
-	const FONNTE_API_ENDPOINT = 'https://api.fonnte.com/send';
-	const OWNER_PHONE = '6282137499434';
-
 	// Storage key for orders
 	window.NOTIFICATION_STORAGE_KEY = 'ghothys_orders';
 
@@ -18,7 +13,7 @@
 		const month = String(now.getMonth() + 1).padStart(2, '0');
 		const day = String(now.getDate()).padStart(2, '0');
 		const dateStr = `${year}${month}${day}`;
-    
+
 		// Get today's order count
 		const orders = getOrdersFromStorage();
 		const todayOrders = orders.filter(o => {
@@ -26,7 +21,7 @@
 			const createdDate = `${createdAt.getFullYear()}${String(createdAt.getMonth() + 1).padStart(2, '0')}${String(createdAt.getDate()).padStart(2, '0')}`;
 			return createdDate === dateStr;
 		});
-    
+
 		const sequence = String(todayOrders.length + 1).padStart(4, '0');
 		return `INV-${dateStr}-${sequence}`;
 	}
@@ -41,13 +36,13 @@
 			'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
 			'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 		];
-    
+
 		const day = now.getDate();
 		const month = months[now.getMonth()];
 		const year = now.getFullYear();
 		const hour = String(now.getHours()).padStart(2, '0');
 		const minute = String(now.getMinutes()).padStart(2, '0');
-    
+
 		return `${day} ${month} ${year} ${hour}:${minute} WIB`;
 	}
 
@@ -131,103 +126,162 @@
 	};
 
 	/**
-	 * Format order message for WhatsApp
+	 * Format order summary into a plain multiline message
 	 * @param {Object} order Order object
 	 * @returns {string} Formatted message
 	 */
-	function formatWhatsAppMessage(order) {
-		const message = `🛒 ORDER BARU
-
-━━━━━━━━━━━━━━
-
-📦 Order ID
-${order.id}
-
-🎮 Game
-${order.game}
-
-👤 UID
-${order.uid}
-
-🌐 Server
-${order.server}
-
-💎 Item
-${order.item}
-
-💰 Harga
-${order.price}
-
-💳 Pembayaran
-${order.payment}
-
-📅 Waktu
-${order.timestamp}
-
-Status:
-Pending
-
-Silakan segera diproses.
-
-━━━━━━━━━━━━━━
-
-Ghothys Store`;
-		return message;
+	function formatOrderSummary(order) {
+		const lines = [
+			'ORDER BARU - GHOTHYS STORE',
+			'--------------------------------',
+			`Order ID : ${order.id}`,
+			`Game     : ${order.game}`,
+			`UID      : ${order.uid}`,
+			`Server   : ${order.server}`,
+			`Item     : ${order.item}`,
+			`Harga    : ${order.price ? ('Rp ' + Number(order.price).toLocaleString('id-ID')) : '-'}`,
+			`Bayar    : ${order.payment}`,
+			`Nama     : ${order.customerName || '-'}`,
+			`Waktu    : ${order.timestamp}`,
+			'Status   : Pending',
+			'--------------------------------',
+			'Ghothys Store'
+		];
+		return lines.join('\n');
 	}
 
 	/**
-	 * Send WhatsApp notification via Fonnte API
+	 * Send to Discord webhook
 	 * @param {Object} order Order object
-	 * @returns {Promise} API response
+	 * @param {string} webhookUrl Discord webhook URL
+	 * @returns {Promise<Object>} Result
 	 */
-	async function sendWhatsAppViaFonnte(order) {
+	async function sendToDiscord(order, webhookUrl) {
+		if (!webhookUrl || !/^https:\/\//.test(webhookUrl)) {
+			return { success: false, skipped: true, channel: 'discord', reason: 'no webhook configured' };
+		}
 		try {
-			const message = formatWhatsAppMessage(order);
-
-			const payload = { target: OWNER_PHONE, message };
-			console.log('[5] Mengirim request ke Fonnte', FONNTE_API_ENDPOINT, payload);
-
-			const response = await fetch(FONNTE_API_ENDPOINT, {
+			const content = formatOrderSummary(order);
+			const response = await fetch(webhookUrl, {
 				method: 'POST',
-				headers: {
-					'Authorization': FONNTE_API_KEY,
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(payload)
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ content, username: 'Ghothys Store - Order' })
 			});
-
-			console.log('[6] Response status from Fonnte', response.status);
-
-			let data = null;
-			try {
-				data = await response.json();
-				console.log('[WHATSAPP SENT]', order.id, data);
-			} catch (parseErr) {
-				const text = await response.text();
-				console.warn('[WHATSAPP] Response parse failed, raw text:', text);
-				// keep data as null
-			}
-
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`);
-			}
-
-			return { success: true, data };
+			if (!response.ok) throw new Error('Discord HTTP ' + response.status);
+			console.log('[DISCORD SENT]', order.id);
+			return { success: true, channel: 'discord' };
 		} catch (error) {
-			console.error('[WHATSAPP FAILED]', order.id, error);
-			return { success: false, error: error.message };
+			console.error('[DISCORD FAILED]', order.id, error);
+			return { success: false, channel: 'discord', error: error.message };
 		}
 	}
 
 	/**
-	 * Main function to handle order submission
-	 * Validates form, creates order, sends WhatsApp notification
+	 * Send to email via Formspree
+	 * @param {Object} order Order object
+	 * @param {string} formspreeId Formspree form ID (e.g. "xxxxxabc")
+	 * @returns {Promise<Object>} Result
+	 */
+	async function sendToEmail(order, formspreeId) {
+		if (!formspreeId) {
+			return { success: false, skipped: true, channel: 'email', reason: 'no formspree id configured' };
+		}
+		try {
+			const endpoint = 'https://formspree.io/f/' + formspreeId;
+			const payload = {
+				_subject: 'Order Baru ' + order.id,
+				order_id: order.id,
+				game: order.game,
+				uid: order.uid,
+				server: order.server,
+				item: order.item,
+				price: order.price ? ('Rp ' + Number(order.price).toLocaleString('id-ID')) : '-',
+				payment: order.payment,
+				customer: order.customerName || '-',
+				time: order.timestamp,
+				message: formatOrderSummary(order)
+			};
+			const response = await fetch(endpoint, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+			if (!response.ok) throw new Error('Formspree HTTP ' + response.status);
+			console.log('[EMAIL SENT]', order.id);
+			return { success: true, channel: 'email' };
+		} catch (error) {
+			console.error('[EMAIL FAILED]', order.id, error);
+			return { success: false, channel: 'email', error: error.message };
+		}
+	}
+
+	/**
+	 * Send to Telegram via secure relay
+	 * @param {Object} order Order object
+	 * @param {string} relayUrl Relay URL (keeps bot token server-side)
+	 * @returns {Promise<Object>} Result
+	 */
+	async function sendToTelegram(order, relayUrl) {
+		if (!relayUrl || !/^https:\/\//.test(relayUrl)) {
+			return { success: false, skipped: true, channel: 'telegram', reason: 'no relay configured' };
+		}
+		try {
+			const payload = {
+				source: 'ghothys-store',
+				order_id: order.id,
+				game: order.game,
+				uid: order.uid,
+				server: order.server,
+				item: order.item,
+				price: order.price ? ('Rp ' + Number(order.price).toLocaleString('id-ID')) : '-',
+				payment: order.payment,
+				customer: order.customerName || '-',
+				time: order.timestamp,
+				summary: formatOrderSummary(order)
+			};
+			const response = await fetch(relayUrl, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+			if (!response.ok) throw new Error('Relay HTTP ' + response.status);
+			console.log('[TELEGRAM SENT]', order.id);
+			return { success: true, channel: 'telegram' };
+		} catch (error) {
+			console.error('[TELEGRAM FAILED]', order.id, error);
+			return { success: false, channel: 'telegram', error: error.message };
+		}
+	}
+
+	/**
+	 * Multicast an order to every configured notification channel.
+	 * Never blocks the checkout flow; runs fire-and-forget.
+	 * @param {Object} order Order object
+	 * @returns {Promise<Array>} Channel results
+	 */
+	window.sendOrderNotifications = async function(order) {
+		if (!order) return [];
+		const cfg = (window.GHOTHYS_NOTIFY_CONFIG) ? window.GHOTHYS_NOTIFY_CONFIG : {};
+		const results = await Promise.all([
+			sendToDiscord(order, cfg.discordWebhook),
+			sendToEmail(order, cfg.formspreeId),
+			sendToTelegram(order, cfg.telegramRelay)
+		]);
+		const delivered = results.filter(r => r.success).length;
+		const skipped = results.filter(r => r.skipped).length;
+		console.log(`[NOTIFY] order ${order.id}: delivered=${delivered} skipped=${skipped} results=`, results);
+		return results;
+	};
+
+	/**
+	 * Legacy entry point kept for backward compatibility.
+	 * Validates, creates the order and broadcasts notifications.
 	 * @param {Object} formData Form data from the order form
 	 * @param {HTMLElement} submitBtn Submit button element for loading state
 	 * @returns {Promise} Result of the operation
 	 */
-	window.sendWhatsAppNotification = async function(formData, submitBtn) {
-		console.log('[3] sendWhatsAppNotification called', formData);
+	window.sendOrderNotification = async function(formData, submitBtn) {
+		console.log('[NOTIFY] sendOrderNotification called', formData);
 		try {
 			// Validate form data
 			const validation = validateFormData(formData);
@@ -247,9 +301,10 @@ Ghothys Store`;
 			// Create order
 			const order = window.createOrder(formData);
 
-			console.log('[4] Mengirim notifikasi WhatsApp...', order.id);
-			// Send WhatsApp notification
-			const whatsappResult = await sendWhatsAppViaFonnte(order);
+			// Send notifications (fire and forget)
+			const results = await window.sendOrderNotifications(order);
+			const delivered = results.filter(r => r.success).length;
+			const skipped = results.filter(r => r.skipped).length;
 
 			// Reset button
 			if (submitBtn) {
@@ -257,22 +312,24 @@ Ghothys Store`;
 				submitBtn.textContent = originalText || 'Bayar';
 			}
 
-			if (whatsappResult.success) {
-				console.log('[7] Notifikasi berhasil dikirim', order.id);
+			if (delivered > 0) {
 				console.log('[NOTIFICATION SUCCESS] Order:', order.id);
 				window.showToast(
-					'✅ Pesanan berhasil dibuat',
-					'Notifikasi Owner berhasil dikirim'
+					'? Pesanan berhasil dibuat',
+					'Notifikasi Owner terkirim (' + delivered + ' kanal)'
 				);
-				return { success: true, order };
-			} else {
-				console.warn('[NOTIFICATION WARNING] Order created but WhatsApp failed:', order.id);
+			} else if (skipped > 0) {
 				window.showToast(
-					'⚠ Pesanan berhasil dibuat',
-					'Namun WhatsApp gagal dikirim'
+					'? Pesanan berhasil dibuat',
+					'Notifikasi belum dikonfigurasi'
 				);
-				return { success: true, order, whatsappWarning: true };
+			} else {
+				window.showToast(
+					'? Pesanan berhasil dibuat',
+					'Namun notifikasi Owner gagal dikirim'
+				);
 			}
+			return { success: true, order };
 		} catch (error) {
 			console.error('[NOTIFICATION ERROR]', error);
 			if (submitBtn) {
@@ -327,5 +384,5 @@ Ghothys Store`;
 	// Legacy notification settings handler (keep for backward compatibility)
 	window.handleNotificationChange = function(type,enabled){window.showToast('Notifikasi',type+(enabled?' diaktifkan':' dinonaktifkan'));};
 
-	console.log('[NOTIFICATION SYSTEM] Initialized with Fonnte API');
+	console.log('[NOTIFICATION SYSTEM] Initialized (multi-channel)');
 })();

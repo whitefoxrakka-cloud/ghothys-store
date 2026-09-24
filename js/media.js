@@ -249,7 +249,7 @@
         <span class="md-card-creator-avatar">${d.creatorAv}</span>
         ${d.creator}
       </span>
-      <span class="md-card-stats">👁 ${d.views} · ❤ ${d.likes}</span>
+      <span class="md-card-stats">👁 ${d.views} | ❤ ${d.likes}</span>
     </div>
   </div>
 </div>`;
@@ -275,10 +275,9 @@
   <div class="md-fs-overlay"></div>
   <div class="md-fs-content">
     <div class="md-fs-title">${d.title}</div>
-    <div class="md-fs-meta">👁 ${d.views} · ${d.creator}</div>
+    <div class="md-fs-meta">👁 ${d.views} | ${d.creator}</div>
   </div>
-</div>`;
-    ).join('');
+</div>`).join('');
   }
 
   function renderCreators () {
@@ -288,11 +287,10 @@
   <div class="md-spotlight-avatar" style="background:${c.color}11;color:${c.color}">${c.avatar}</div>
   <div class="md-spotlight-info">
     <div class="md-spotlight-name">${c.name} ${c.featured ? '<span class="md-spotlight-featured-badge">✦ Featured</span>' : ''}</div>
-    <div class="md-spotlight-role">${c.role} · ${c.mediaCount} media</div>
+    <div class="md-spotlight-role">${c.role} | ${c.mediaCount} media</div>
   </div>
   <div class="md-spotlight-stat">${c.followers}</div>
-</div>`;
-    ).join('');
+</div>`).join('');
   }
 
   function renderTrending () {
@@ -305,8 +303,7 @@
     <div class="md-trending-title">${d.title}</div>
     <div class="md-trending-meta">👁 ${d.meta}</div>
   </div>
-</div>`;
-    ).join('');
+</div>`).join('');
   }
 
   function renderSidebar () {
@@ -319,20 +316,18 @@
   <img class="md-si-thumb" src="${d.images.thumb}" alt="" onerror="this.src='https://placehold.co/36x36/0F142D/8B5CF6?text=?'">
   <div class="md-si-text">
     <div class="md-si-title">${d.title}</div>
-    <div class="md-si-meta">👁 ${d.views} · ${d.creator}</div>
+    <div class="md-si-meta">👁 ${d.views} | ${d.creator}</div>
   </div>
-</div>`;
-    ).join('');
+</div>`).join('');
 
     document.getElementById('md-popular-list').innerHTML = popular.map(d => `
 <div class="md-side-item" onclick="openLightbox(${DATA.indexOf(d)})">
   <div class="md-si-icon">${d.type === 'video' ? '🎬' : '🖼'}</div>
   <div class="md-si-text">
     <div class="md-si-title">${d.title}</div>
-    <div class="md-si-meta">👁 ${d.views} · ❤ ${d.likes}</div>
+    <div class="md-si-meta">👁 ${d.views} | ❤ ${d.likes}</div>
   </div>
-</div>`;
-    ).join('');
+</div>`).join('');
 
     document.getElementById('md-categories-list').innerHTML = cats.map(([name, color]) => {
       const count = DATA.filter(d => d.cat === name).length;
@@ -370,7 +365,7 @@
     const lb = document.getElementById('md-lightbox');
     document.getElementById('md-lb-img').src = item.images.full;
     document.getElementById('md-lb-title').textContent = item.title;
-    document.getElementById('md-lb-desc').innerHTML = `<span>👁 ${item.views}</span> · <span>❤ ${item.likes}</span> · <span>${item.creator}</span>`;
+    document.getElementById('md-lb-desc').innerHTML = `<span>👁 ${item.views}</span> | <span>❤ ${item.likes}</span> | <span>${item.creator}</span>`;
     lb.classList.add('open');
     document.body.style.overflow = 'hidden';
   }
