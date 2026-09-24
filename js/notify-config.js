@@ -1,20 +1,40 @@
 /* ============================================================
    GHOTHYS STORE - Konfigurasi Notifikasi Order Baru
    ------------------------------------------------------------
-   Isi di bawah ini dengan data punyamu sendiri. Kolom yang
-   dikosongkan ('') berarti kanal tersebut nonaktif.
+   Cara AMAN (disarankan):
+   Biarkan webhook Discord & token Telegram DISEMBUNYIKAN
+   di belakang relay Cloudflare Worker (file: relay/worker.js).
+   Situs TIDAK pernah menyimpan token — hanya URL relay + secret.
+   Kolom yang dikosongkan ('') berarti kanal tersebut nonaktif.
 
-   1) DISCORD  -> buka server Discord -> Settings -> Integrations
-      -> Webhooks -> New Webhook -> salin URL Webhook ke sini.
-   2) EMAIL    -> buat form gratis di https://formspree.io
-      -> salin ID form (yang terlihat di https://formspree.io/f/XXXX)
-      -> isi hanya 4 huruf/angka terakhir XXXX.
-   3) TELEGRAM -> dibuat menyusul lewat relay (bagus untuk keamanan);
-      biarkan kosong sampai relay siap, lalu isi URL relay-nya.
+   Setup relay (sekali saja, ~5 menit):
+   1) Buka https://dash.cloudflare.com -> Workers & Pages -> Create
+      -> Worker -> tempel isi relay/worker.js -> Save & Deploy.
+   2) Settings -> Variables:
+        DISCORD_WEBHOOK_URL = <URL webhook Discord kamu>
+        SECRET              = <kata sandi acak panjang (bebas)>
+        (opsional nanti) TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID
+   3) Copy URL worker (mis. https://ghothys-notif.xxx.workers.dev)
+      isi ke relayUrl di bawah, dan SECRET yang sama ke relaySecret.
+
+   FALLBACK (jika relay belum dibuat, KURANG AMAN):
+   Bisa diisi sementara di kolom 'discordWebhook'/'formspreeId'
+   langsung, tapi webhook akan terekspos siapa pun yang lihat repo.
+   Setelah relay aktif, kosongkan kolom fallback ini.
    ============================================================ */
 window.GHOTHYS_NOTIFY_CONFIG = {
-	// Example: 'https://discord.com/api/webhooks/1234567890/AbCdEfGhIjKl'
-	discordWebhook: 'https://discord.com/api/webhooks/1552713520380907540/gRRB5lNhg24jxjrRtrljCdPH-opgdhhAiErDcZXvtqHrAWjzBGSXK7D7qx7oTGG1rob-',
+	// === GAYA AMAN (prioritas utama) ===
+
+	// Contoh: 'https://ghothys-notif.xxx.workers.dev'
+	relayUrl: '',
+
+	// Kata sandi acak panjang yang sama dengan variabel SECRET di worker.
+	relaySecret: '',
+
+	// === FALLBACK LANGSUNG (hanya jika relay belum dibuat) ===
+
+	// Contoh: 'https://discord.com/api/webhooks/1234567890/AbCdEfGhIjKl'
+	discordWebhook: '',
 
 	// Contoh: 'mzngqvwy'
 	formspreeId: '',

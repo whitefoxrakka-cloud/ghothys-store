@@ -177,6 +177,52 @@
 	}
 
 	/**
+	 * Send order to the secure relay (keeps Discord webhook &
+	 * Telegram token server-side; relay only forwards valid orders)
+	 * @param {Object} order Order object
+	 * @param {string} relayUrl Relay URL (Cloudflare Worker)
+	 * @param {string} secret Shared secret authorized by the relay
+	 * @returns {Promise<Object>} Result
+	 */
+	async function sendToRelay(order, relayUrl, secret) {
+		if (!relayUrl || !/^https:\/\//.test(relayUrl)) {
+			return { success: false, skipped: true, channel: 'relay', reason: 'no relay configured' };
+		}
+		try {
+			const payload = {
+				source: 'ghothys-store',
+				order_id: order.id,
+				game: order.game,
+				uid: order.uid,
+				server: order.server,
+				item: order.item,
+				price: order.price ? ('Rp ' + Number(order.price).toLocaleString('id-ID')) : '-',
+				payment: order.payment,
+				customer: order.customerName || '-',
+				time: order.timestamp,
+				summary: formatOrderSummary(order)
+			};
+			const headers = { 'Content-Type': 'application/json' };
+			if (secret) headers['X-Ghothys-Secret'] = secret;
+			const response = await fetch(relayUrl, {
+				method: 'POST',
+				headers: headers,
+				body: JSON.stringify(payload)
+			});
+			if (!response.ok) {
+				let detail = '';
+				try { const j = await response.json(); detail = j.error || ''; } catch (e) {}
+				throw new Error('Relay HTTP ' + response.status + (detail ? ' ' + detail : ''));
+			}
+			console.log('[RELAY SENT]', order.id);
+			return { success: true, channel: 'relay' };
+		} catch (error) {
+			console.error('[RELAY FAILED]', order.id, error);
+			return { success: false, channel: 'relay', error: error.message };
+		}
+	}
+
+	/**
 	 * Send to email via Formspree
 	 * @param {Object} order Order object
 	 * @param {string} formspreeId Formspree form ID (e.g. "xxxxxabc")
@@ -262,11 +308,16 @@
 	window.sendOrderNotifications = async function(order) {
 		if (!order) return [];
 		const cfg = (window.GHOTHYS_NOTIFY_CONFIG) ? window.GHOTHYS_NOTIFY_CONFIG : {};
-		const results = await Promise.all([
-			sendToDiscord(order, cfg.discordWebhook),
-			sendToEmail(order, cfg.formspreeId),
-			sendToTelegram(order, cfg.telegramRelay)
-		]);
+		const results = [];
+		// Preferred: secure relay (hides webhook/token; forwards valid orders only)
+		if (cfg.relayUrl && /^https:\/\//.test(cfg.relayUrl)) {
+			results.push(await sendToRelay(order, cfg.relayUrl, cfg.relaySecret));
+		} else {
+			// Fallback: direct channels (webhook stays in the repo, less safe)
+			results.push(await sendToDiscord(order, cfg.discordWebhook));
+			results.push(await sendToEmail(order, cfg.formspreeId));
+			results.push(await sendToTelegram(order, cfg.telegramRelay));
+		}
 		const delivered = results.filter(r => r.success).length;
 		const skipped = results.filter(r => r.skipped).length;
 		console.log(`[NOTIFY] order ${order.id}: delivered=${delivered} skipped=${skipped} results=`, results);
