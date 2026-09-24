@@ -37,7 +37,7 @@ window.GHOTHYS_NOTIFY_CONFIG = {
 	discordWebhook: '',
 
 	// Contoh: 'mzngqvwy'
-	formspreeId: '',
+	formspreeId: 'mdekddgg',
 
 	// Contoh: 'https://ghothys-relay.example.com/notify'
 	telegramRelay: ''

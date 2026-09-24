@@ -315,9 +315,10 @@
 		} else {
 			// Fallback: direct channels (webhook stays in the repo, less safe)
 			results.push(await sendToDiscord(order, cfg.discordWebhook));
-			results.push(await sendToEmail(order, cfg.formspreeId));
 			results.push(await sendToTelegram(order, cfg.telegramRelay));
 		}
+		// Email via Formspree works alongside the relay (form ID is public-safe)
+		results.push(await sendToEmail(order, cfg.formspreeId));
 		const delivered = results.filter(r => r.success).length;
 		const skipped = results.filter(r => r.skipped).length;
 		console.log(`[NOTIFY] order ${order.id}: delivered=${delivered} skipped=${skipped} results=`, results);
