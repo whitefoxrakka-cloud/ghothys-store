@@ -7,6 +7,10 @@
     document.getElementById('modal-title').textContent=game.name;
     document.getElementById('package-options').innerHTML=game.packages.map((p,i)=>{const dp=p.discount>0?p.price*(1-p.discount/100):p.price;return`<label class="border-2 rounded-lg p-4 cursor-pointer hover:border-purple-500" style="border-color:var(--border-color);"><input type="radio" name="package" value='${JSON.stringify(p)}' ${i===0?'required':''} class="mr-2"><div class="flex justify-between items-start"><div><span class="font-semibold" style="color:var(--text-primary)">${p.name}</span>${p.discount>0?`<div class="text-xs text-green-600">🔥 -${p.discount}%</div>`:''}</div><div class="text-purple-600 font-bold">Rp ${Math.floor(dp).toLocaleString('id-ID')}</div></div></label>`;}).join('');
     document.getElementById('available-points').textContent=window.currentUser.points||0;
+    const pv = document.getElementById('payment-success-view');
+    const pf = document.getElementById('topup-form');
+    if(pv) pv.style.display='none';
+    if(pf) pf.style.display='';
     document.getElementById('topup-modal').style.display='block';document.body.style.overflow='hidden';
   };
 
@@ -271,11 +275,20 @@
         window.saveTransactions(tx);
         console.log('[STEP 6] Transaction saved');
 
-        window.updateUI();
-        window.closeModal();
-        console.log('[STEP 6] Navigate to transactions-page');
+        // Show payment instructions (keeps modal open with steps + WA confirm)
+        if(payment === 'Points'){
+          window.updateUI();
+          window.closeModal();
+          setTimeout(() => window.navigateTo('transactions-page'), 1200);
+          return;
+        }
+        showPaymentView({
+          orderId: orderId,
+          total: Math.floor(finalPrice),
+          payment: payment
+        });
 
-        setTimeout(() => window.navigateTo('transactions-page'), 1500);
+        window.updateUI();
         return;
       }
 
@@ -310,4 +323,62 @@
       window.__topupInFlight = false;
     }
   };
+
+  /* Payment instructions view — shown after order is created */
+  function showPaymentView(info){
+    const view = document.getElementById('payment-success-view');
+    const form = document.getElementById('topup-form');
+    if(!view) return;
+
+    const cfg = (window.GHOTHYS_NOTIFY_CONFIG) ? window.GHOTHYS_NOTIFY_CONFIG : {};
+    const payInfo = (cfg.payments && cfg.payments[info.payment]) ? cfg.payments[info.payment] : null;
+    const account = payInfo ? payInfo.number : '082137499434';
+    const name = payInfo ? payInfo.atasNama : cfg.storeName || 'Ghothys Store';
+
+    const setText = (id, text)=>{ const el=document.getElementById(id); if(el) el.textContent = text; };
+    setText('pay-order-id', info.orderId);
+    setText('pay-total', 'Rp ' + Number(info.total || 0).toLocaleString('id-ID'));
+    setText('pay-method', info.payment);
+    setText('pay-account', account);
+    setText('pay-account-owner', 'a.n. ' + name);
+
+    // WhatsApp confirm link (order id + total prefilled)
+    const waBtn = document.getElementById('pay-wa-btn');
+    if(waBtn){
+      const msg = encodeURIComponent(
+        'Halo, saya sudah melakukan pembayaran.\n\n' +
+        'Order ID: ' + info.orderId + '\n' +
+        'Metode: ' + info.payment + '\n' +
+        'Total: Rp ' + Number(info.total || 0).toLocaleString('id-ID') + '\n\n' +
+        'Berikut bukti transfer saya:'
+      );
+      const wa = cfg.waNumber || '6282137499434';
+      waBtn.href = 'https://wa.me/' + wa + '?text=' + msg;
+    }
+
+    const copyBtn = document.getElementById('pay-copy-btn');
+    if(copyBtn){
+      copyBtn.onclick = function(){
+        try {
+          navigator.clipboard.writeText(account);
+          window.showToast && window.showToast('✅ Tersalin', 'Nomor disalin: ' + account);
+        } catch(e){
+          prompt('Salin nomor berikut:', account);
+        }
+      };
+    }
+
+    const closeBtn = document.getElementById('pay-close-btn');
+    if(closeBtn){
+      closeBtn.onclick = function(){
+        window.closeModal();
+        window.navigateTo && window.navigateTo('transactions-page');
+      };
+    }
+
+    if(form) form.style.display = 'none';
+    view.style.display = 'block';
+  }
+
+  window.showPaymentView = showPaymentView;
 })();

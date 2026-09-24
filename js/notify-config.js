@@ -40,5 +40,15 @@ window.GHOTHYS_NOTIFY_CONFIG = {
 	formspreeId: 'mdekddgg',
 
 	// Contoh: 'https://ghothys-relay.example.com/notify'
-	telegramRelay: ''
+	telegramRelay: '',
+
+	// === NOMER TUJUAN PEMBAYARAN (ditampilkan ke customer) ===
+	// Key harus SAMA dengan value opsi payment di form checkout.
+	payments: {
+		DANA: { number: '082137499434', atasNama: 'Ghothys Store' },
+		GoPay: { number: '082137499434', atasNama: 'Ghothys Store' }
+	},
+
+	// Nomor WhatsApp customer untuk konfirmasi setelah bayar (format 62...).
+	waNumber: '6282137499434'
 };
