@@ -91,7 +91,7 @@
     saveAllUsers(users);
     const token = sign(user);
     localStorage.setItem('ghothys_token', token);
-    return { data: { token, user: toClientUser(user) } };
+    return { success: true, data: { token, user: toClientUser(user) } };
   };
 
   const login = async (data) => {
@@ -103,14 +103,14 @@
     if (hash !== user.passwordHash) throw { statusCode: 401, message: 'Email/Username atau password salah' };
     const token = sign(user);
     localStorage.setItem('ghothys_token', token);
-    return { data: { token, user: toClientUser(user) } };
+    return { success: true, data: { token, user: toClientUser(user) } };
   };
 
   const getProfile = async () => {
     const token = localStorage.getItem('ghothys_token');
     if (!token) throw { statusCode: 401, message: 'Tidak terautentikasi' };
     const cached = localStorage.getItem(window.STORAGE_KEYS.CURRENT_USER);
-    if (cached) return { data: JSON.parse(cached) };
+    if (cached) return { success: true, data: JSON.parse(cached) };
     throw { statusCode: 401, message: 'Sesi tidak ditemukan' };
   };
 
@@ -124,7 +124,7 @@
     saveAllUsers(users);
     window.currentUser = toClientUser(users[i]);
     localStorage.setItem(window.STORAGE_KEYS.CURRENT_USER, JSON.stringify(window.currentUser));
-    return { data: toClientUser(users[i]) };
+    return { success: true, data: toClientUser(users[i]) };
   };
 
   const changePassword = async (data) => {
@@ -136,7 +136,7 @@
     if (oldHash !== users[i].passwordHash) throw { statusCode: 400, message: 'Password lama salah' };
     users[i].passwordHash = await hashPassword(data.newPassword);
     saveAllUsers(users);
-    return { data: { success: true } };
+    return { success: true, data: { success: true } };
   };
 
   const changeUsername = async (data) => {
@@ -154,7 +154,7 @@
     const client = toClientUser(users[i]);
     window.currentUser = client;
     localStorage.setItem(window.STORAGE_KEYS.CURRENT_USER, JSON.stringify(client));
-    return { data: client };
+    return { success: true, data: client };
   };
 
   const addPoints = async (data) => {
@@ -167,12 +167,12 @@
     saveAllUsers(users);
     window.currentUser = toClientUser(users[i]);
     localStorage.setItem(window.STORAGE_KEYS.CURRENT_USER, JSON.stringify(window.currentUser));
-    return { data: { points: users[i].points } };
+    return { success: true, data: { points: users[i].points } };
   };
 
   const forgotPassword = async () => {
     // No SMTP available on static hosting; guide user instead.
-    return { data: { ok: true }, message: 'Pada versi statis, hubungi Owner untuk reset password' };
+    return { success: true, data: { ok: true }, message: 'Pada versi statis, hubungi Owner untuk reset password' };
   };
 
   /* ---- orders ---- */
