@@ -1,0 +1,27 @@
+/* Global Styles, Reset, Typography */
+html,body{height:100%;}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg-primary);
+  color:var(--text-primary);
+  transition:background .3s,color .3s;
+}
+
+.card-hover{transition:transform .3s,box-shadow .3s}
+.card-hover:hover{transform:translateY(-8px);box-shadow:0 20px 40px rgba(0,0,0,.15)}
+
+/* Common page content switching */
+.page-content{display:none}
+.page-content.active{display:block;animation:pageSlideIn .3s ease}
+
+/* Generic stat card used across pages */
+.stat-card{background:#1e293b;border-radius:14px;padding:14px;border:1px solid #334155}
+
+.settings-btn{transition:all .3s}
+.settings-btn:hover{background-color:var(--border-color);transform:translateX(4px)}
+
+.dark-toggle-btn{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .3s;font-size:20px}
+.dark-toggle-btn:hover{background:var(--border-color)}
+
+/* Small utilities */
+.online-dot{width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block}

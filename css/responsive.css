@@ -1,0 +1,11 @@
+/* Responsive tweaks and media queries */
+@media(max-width:768px){
+  .jumbotron-title{font-size:1.9rem}
+  .jumbotron-custom{margin:1rem;padding:2.5rem 1.5rem}
+  .jumbotron-content{flex-direction:column}
+}
+
+@media(max-width:1024px){
+  .community-wrapper{grid-template-columns:1fr}
+  .community-sidebar-left,.community-sidebar-right{display:none}
+}

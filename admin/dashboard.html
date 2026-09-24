@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard - Ghothys Store</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    .admin-shell{
+      max-width: 1200px;
+      margin: 36px auto;
+      padding: 0 16px;
+    }
+    .admin-topbar{
+      display:flex; justify-content:space-between; align-items:center;
+      margin-bottom: 18px;
+    }
+    .admin-topbar h1{
+      font-size: 20px; color: var(--text-primary);
+      margin:0;
+    }
+    .btn{
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: none;
+      font-weight: 800;
+      background: var(--bg-card);
+      color: var(--text-primary);
+      box-shadow: var(--shadow);
+      cursor:pointer;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .card{
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+      min-height: 84px;
+    }
+    .card .k{ color: var(--text-secondary); font-weight: 700; font-size: 13px;}
+    .card .v{ color: var(--text-primary); font-weight: 900; font-size: 22px; margin-top: 6px;}
+    .chart-wrap{
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+    .chart-grid{
+      display:flex; gap: 12px; flex-wrap:wrap;
+    }
+    .bar{
+      flex: 1 1 80px;
+      min-width: 60px;
+      display:flex; flex-direction:column; align-items:center;
+      gap: 8px;
+    }
+    .bar .col{
+      width: 100%;
+      background: rgba(109,40,217,.85);
+      border-radius: 10px;
+      min-height: 8px;
+    }
+    .bar .lbl{
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+    .subrow{
+      margin-top: 10px;
+      color: var(--text-secondary);
+      font-weight:700;
+      font-size: 13px;
+    }
+    .status-row{
+      display:flex; gap: 10px; flex-wrap:wrap; margin-top: 10px;
+    }
+    .pill{
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(109,40,217,.08);
+      border: 1px solid rgba(109,40,217,.25);
+      font-weight: 900;
+      color: var(--text-primary);
+    }
+    .pill span{ color: var(--text-secondary); font-weight: 800; margin-right: 6px; }
+  </style>
+</head>
+<body>
+  <div class="admin-shell">
+    <div class="admin-topbar">
+      <h1>GHOTHYS STORE • ADMIN DASHBOARD</h1>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button class="btn" id="refresh-btn" type="button">Refresh</button>
+        <button class="btn" id="logout-btn" type="button">Logout</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="k">Total Order (Hari Ini)</div>
+        <div class="v" id="stat-total-orders">—</div>
+      </div>
+      <div class="card">
+        <div class="k">Pendapatan (Hari Ini)</div>
+        <div class="v" id="stat-total-revenue">—</div>
+      </div>
+      <div class="card">
+        <div class="k">Total Member</div>
+        <div class="v" id="stat-total-members">—</div>
+      </div>
+      <div class="card">
+        <div class="k">Status Breakdown</div>
+        <div class="v" style="font-size:16px;">
+          <span id="status-summary">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <div style="font-weight:900; color:var(--text-primary);">Grafik (7 hari terakhir) - jumlah order</div>
+      <div class="chart-grid" id="chart-orders" style="margin-top: 12px;"></div>
+      <div class="subrow">Sumbu Y disesuaikan otomatis (berdasarkan data terakhir).</div>
+    </div>
+
+    <div style="margin-top: 16px;">
+      <div style="font-weight:900; color:var(--text-primary); margin-bottom: 8px;">Ringkasan Status</div>
+      <div class="status-row" id="status-pills"></div>
+    </div>
+
+    <div style="margin-top: 16px;">
+      <button class="btn" type="button" onclick="location.href='./orders.html'">Lihat Order</button>
+    </div>
+  </div>
+
+  <script src="../admin/js/admin-api.js"></script>
+  <script src="../admin/js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+/* Navbar and navigation link styles */
+.nav-link{transition:all .3s;position:relative}
+.nav-link.active{font-weight:700}
+.nav-link.active::after{content:'';position:absolute;bottom:-8px;left:0;right:0;height:3px;background:#7c3aed;border-radius:2px}
+
+#site-footer{background:var(--bg-nav)}
