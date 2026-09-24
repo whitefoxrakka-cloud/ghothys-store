@@ -13,8 +13,8 @@
       biarkan kosong sampai relay siap, lalu isi URL relay-nya.
    ============================================================ */
 window.GHOTHYS_NOTIFY_CONFIG = {
-	// Contoh: 'https://discord.com/api/webhooks/1234567890/AbCdEfGhIjKl'
-	discordWebhook: '',
+	// Example: 'https://discord.com/api/webhooks/1234567890/AbCdEfGhIjKl'
+	discordWebhook: 'https://discord.com/api/webhooks/1552713520380907540/gRRB5lNhg24jxjrRtrljCdPH-opgdhhAiErDcZXvtqHrAWjzBGSXK7D7qx7oTGG1rob-',
 
 	// Contoh: 'mzngqvwy'
 	formspreeId: '',
