@@ -55,7 +55,9 @@
     if(!token){
       if(!lastPushWarned){
         lastPushWarned = true;
-        console.warn('[content-bridge] Belum login di panel /admin/ pada tab ini - konten owner tidak dikirim ke relay.');
+        var pesan = 'Konten tersimpan di browser ini saja, BELUM ke server. Buka /admin/ pada tab ini, login, lalu klik Simpan lagi.';
+        console.warn('[content-bridge] ' + pesan);
+        if(typeof window.showErrorToast === 'function') window.showErrorToast('Konten belum ke server', pesan);
       }
       return { ok: false, skipped: true, reason: 'admin login required' };
     }
@@ -79,14 +81,33 @@
         return { ok: res.ok, status: res.status, json: j };
       });
     }).then(function(r){
-      if(!r.ok && !lastPushWarned){
+      if(r.ok){
+        lastPushWarned = false;
+        if(typeof window.showToast === 'function'){
+          window.showToast('Konten tersimpan', 'Perubahan sudah terkirim ke server dan tampil untuk pengunjung.');
+        }
+        return;
+      }
+      if(r.status === 409){
+        if(typeof window.showErrorToast === 'function'){
+          window.showErrorToast('Server menolak', r.json && r.json.error ? r.json.error : 'Payload ditolak.');
+        }
+        return;
+      }
+      if(!lastPushWarned){
         lastPushWarned = true;
         console.warn('[content-bridge] Relay /content POST gagal', r.status, r.json);
+        if(typeof window.showErrorToast === 'function'){
+          window.showErrorToast('Gagal kirim ke server', 'Konten hanya ada di browser ini. Coba ' + (r.status === 401 || r.status === 403 ? 'login ulang di /admin/ pada tab ini' : 'lagi beberapa saat lagi') + '.');
+        }
       }
     }).catch(function(e){
       if(!lastPushWarned){
         lastPushWarned = true;
         console.warn('[content-bridge] Relay /content POST error', e && e.message);
+        if(typeof window.showErrorToast === 'function'){
+          window.showErrorToast('Gagal kirim ke server', 'Konten hanya ada di browser ini. Periksa koneksi lalu coba lagi.');
+        }
       }
     });
     return { ok: true, sent: true };

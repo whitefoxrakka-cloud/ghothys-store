@@ -51,23 +51,32 @@ ANTI-SPAM ORDER (sudah aktif, versi 2026-09-25)
   2. Honeypot: field tersembunyi name="website" di #topup-form. Terisi = 400.
   3. Dwell time: klien kirim t = kapan form dibuka. < 2 detik = 400.
      t kosong/0 tetap diterima agar halaman lama di cache tidak rusak.
-  4. Rate limit 5 order / 10 menit / IP (balas 429 + Retry-After).
-     Klien otomatis coba lagi sekali setelah jeda 3,2 detik.
-     CATATAN PENTING: ini memakai Map di memori isolate, jadi sifatnya
-    -best effort - Cloudflare bisa menjalankan request paralel di isolate
-     berbeda sehingga hitungannya tidak selalu konsisten (terbukti: 10
-     request paralel -> 1 balasan 429, sisanya 200). Jadi rate limit ini
-     memperlambat spam naif, bukan jaminan keras. Untuk jaminan keras:
-     aturan rate limiting di dashboard Cloudflare (WAF) atau Durable Object.
-     Login admin (/admin/login) punya limiter dengan catatan yang sama.
-  5. Cek duplikat Order ID di Airtable (balas 200 duplicate, tidak kirim
-     ulang ke Discord/Telegram).
-  6. Validasi ketat: order_id /^INV-\d{8}-\d{1,6}$/, game & uid wajib,
-     price 1-5.000.000, panjang tiap field dibatasi.
-  7. Harga dinormalisasi: "Rp 10.000" (kiriman versi lama) dibaca 10000,
-     bukan 10. Tanpa ini kolom Price di Airtable korup.
-  CATATAN: ini menahan spam/bot, bukan otentikasi. Kalau butuh proteksi
-  lebih ketat (mis. wajib login/OTP), itu perubahan terpisah.
+   4. Rate limit 5 order / 10 menit / IP (balas 429 + Retry-After).
+      Klien otomatis coba lagi sekali setelah jeda 3,2 detik.
+      Sekarang ada DUA lapis:
+      a) Map di memori isolate (pembatas cepat, tidak menambah biaya).
+      b) Durable Object "RateLimiter" (pembatas KERAS). Satu instance
+         global, request-nya diproses satu per satu, dan hitungannya
+         disimpan di storage DO dengan masa berlaku 10 menit, jadi
+         tetap berlaku walau instance di-evict atau Worker di-deploy
+         ulang. Bukti 25/09/2026: 12 request paralel -> tepat 5x 200
+         dan 7x 429 (sebelumnya 10 paralel -> hanya 1x 429).
+         Kalau DO tidak bisa dihubungi, sistem JALAN (fail-open)
+         supaya order asli tidak terlambat.
+      Batas paket free: Durable Object WAJIB dibuat lewat migrasi
+      new_sqlite_classes (new_classes ditolak dengan kode 10097).
+      Login admin juga memakai DO yang sama: 8 percobaan / 10 menit /
+      (ip+email), lalu 429. Bukti: 8x 401 lalu 429.
+   5. Cek duplikat Order ID di Airtable (balas 200 duplicate, tidak kirim
+      ulang ke Discord/Telegram).
+   6. Validasi ketat: order_id /^INV-\d{8}-\d{1,6}$/, game & uid wajib,
+      price 1-5.000.000, panjang tiap field dibatasi.
+   7. Harga dinormalisasi: "Rp 10.000" (kiriman versi lama) dibaca 10000,
+      bukan 10. Tanpa ini kolom Price di Airtable korup.
+   CATATAN: ini menahan spam/bot, bukan otentikasi. Kalau butuh proteksi
+   lebih ketat (mis. wajib login/OTP), itu perubahan terpisah.
+   Lapis WAF di dashboard Cloudflare masih opsional kalau
+   kamu mau menahan traffic yang tidak pernah sampai ke Worker.
 
   DATA AIRTABLE SUDAH DIRAPIKAN (25/09/2026, lewat endpoint sementara
   /admin/fix-data yang sudah dihapus lagi):
@@ -75,11 +84,46 @@ ANTI-SPAM ORDER (sudah aktif, versi 2026-09-25)
      INV-20260925-0004  price 10   -> 10000
      INV-20260925-7101  order uji  -> dihapus
 
-  PENTING: relaySecret di js/notify-config.js SUDAH DIKOSONGKAN dan
-  secret lama sudah dirotasi. Jangan pernah menaruh secret di file publik
-  (view source bisa dilihat siapa pun). Untuk tulis konten owner, browser
-  memakai token panel admin (sessionStorage admin_jwt) -> wajib login di
-  /admin/ pada tab yang sama.
+   PENTING: relaySecret di js/notify-config.js SUDAH DIKOSONGKAN dan
+   secret lama sudah dirotasi. Jangan pernah menaruh secret di file publik
+   (view source bisa dilihat siapa pun). Untuk tulis konten owner, browser
+   memakai token panel admin (sessionStorage admin_jwt) -> wajib login di
+   /admin/ pada tab yang sama.
+
+KONTEN OWNER (pengumuman / event / banner)
+  Isi konten owner disimpan di DUA tempat:
+    1. localStorage browser (kunci ghothys_owner_panel) - tempat kamu
+       mengedit lewat panel owner di index.html.
+    2. Tabel Airtable "Content" (satu baris ORDER_ID=content_owner_1),
+       dibaca pengunjung lewat GET /content.
+  Pengunjung hanya melihat yang di (2). Kalau (1) ada tapi (2) kosong,
+  situs tetap jalan dengan kartu statis, tapi konten kamu tidak tayang.
+
+  25/09/2026 isi (2) sempat terkosong karena ada request dengan secret
+  lama. Dua perbaikan supaya tidak bisa terulang:
+    - Server: POST /content yang payload-nya kosong DITOLAK dengan 409
+      selama di server masih ada isi. Kalau memang mau mengosongkan
+      semua, kirim force:true (kunci force tidak ikut disimpan).
+    - Browser: content-bridge.js sekarang selalu memberi tahu lewat
+      toast kalau gagal terkirim, termasuk bila belum login di /admin/
+      pada tab itu. Dulu gagal diam-diam.
+
+  CARA MEMULIHKAN (butuh kamu, karena isinya data kamu):
+    1. Buka situs di browser yang biasa kamu pakai untuk edit konten
+       (browser dengan localStorage yang masih ada isinya).
+       Kalau localStorage sudah kosong, isi tidak bisa dipulihkan -
+       harus diketik ulang dari panel owner.
+    2. Di tab YANG SAMA, buka /admin/login.html lalu login pakai
+       password admin terbaru. Ini mengisi sessionStorage admin_jwt
+       yang dibaca content-bridge.
+    3. Balik ke index.html, buka panel owner, cek isi
+       pengumuman/event/banner, lalu klik Simpan.
+    4. Toast hijau "Konten tersimpan" = berhasil. Verifikasi:
+       buka https://<worker>.workers.dev/content
+       isi announcements/events/banners harus muncul.
+    5. Kalau toast merah "Server menolak" dengan 409, berarti kamu
+       sengaja menghapus semua - klik Simpan lagi setelah memastikan.
+
 
 ENDPOINT PANEL ADMIN (butuh header "Authorization: Bearer <token>", 8 jam)
   POST   /admin/login                { email, password } -> { data: { token, user } }

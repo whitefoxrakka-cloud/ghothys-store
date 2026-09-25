@@ -323,6 +323,75 @@ function orderSpamLimit(ip) {
 	return { blocked: false, retryAfterSec: 0 };
 }
 
+/* ============================================================
+   PEMBATAS KERAS (Durable Object) - global & persisten
+   ------------------------------------------------------------
+   Map di memori di atas hanya hidup per isolate, jadi dua request
+   paralel bisa lolos (terbukti: 10 paralel -> 1 balasan 429).
+   Durable Object hanya punya satu instance yang request-nya diproses
+   satu per satu, jadi hitungannya konsisten di seluruh dunia. Jumlah
+   disimpan di storage DO dengan masa berlaku = panjang jendela, jadi
+   tetap berlaku walau instance di-evict atau di-restart.
+   Kalau DO tidak bisa dihubungi, sistem JALAN (fail-open) supaya
+   order asli tidak terlambat hanya karena layanan rate limiter.
+   ============================================================ */
+async function hardRateLimit(env, key, max, windowMs) {
+	if (!env.RATE_LIMITER || typeof env.RATE_LIMITER.get !== 'function') {
+		return { blocked: false, retryAfterSec: 0, mode: 'lokal-saja' };
+	}
+	try {
+		const stub = env.RATE_LIMITER.get(env.RATE_LIMITER.idFromName('global-limiter'));
+		const res = await stub.fetch('https://do/rate', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ key: key, max: max, windowMs: windowMs }),
+			signal: AbortSignal.timeout(2000)
+		});
+		const out = await res.json();
+		out.mode = 'durable';
+		return out;
+	} catch (e) {
+		return { blocked: false, retryAfterSec: 0, mode: 'gagal:' + (e && e.message ? e.message : 'tidak diketahui') };
+	}
+}
+
+export class RateLimiter {
+	constructor(state, env) {
+		this.state = state;
+		this.env = env;
+	}
+
+	async fetch(request) {
+		let payload = {};
+		try { payload = await request.json(); } catch (e) { payload = {}; }
+		const key = String(payload.key || 'anon').slice(0, 160);
+		const max = Math.max(1, Math.min(200, Number(payload.max) || 5));
+		const windowMs = Math.max(1000, Math.min(60 * 60 * 1000, Number(payload.windowMs) || 600000));
+		const storeKey = 'rl:' + key;
+		const now = Date.now();
+
+		let list = [];
+		try { list = (await this.state.storage.get(storeKey)) || []; } catch (e) { list = []; }
+		if (!Array.isArray(list)) list = [];
+		list = list.filter((t) => (now - t) < windowMs);
+
+		if (list.length >= max) {
+			try { await this.state.storage.put(storeKey, list, { expirationTtl: Math.ceil(windowMs / 1000) + 60 }); } catch (e) {}
+			return Response.json({
+				blocked: true,
+				retryAfterSec: Math.max(1, Math.ceil((windowMs - (now - list[0])) / 1000)),
+				count: list.length,
+				limit: max
+			});
+		}
+
+		list.push(now);
+		try { await this.state.storage.put(storeKey, list, { expirationTtl: Math.ceil(windowMs / 1000) + 60 }); } catch (e) {}
+		return Response.json({ blocked: false, retryAfterSec: 0, count: list.length, limit: max });
+	}
+}
+
+
 /* Browser asli selalu mengirim header Sec-Fetch-*. Nilai header yang
    tidak sesuai fetch() browser = ciri bot (curl/python/lynx).
    Kalau semua header itu tidak ada sama sekali, hanya Origin dari daftar
@@ -688,6 +757,10 @@ async function handleAdminRoute(request, env, url, headers) {
 		if (loginThrottle(throttleKey).blocked) {
 			return jsonResponse({ success: false, message: 'Terlalu banyak percobaan login. Tunggu beberapa menit lalu coba lagi.' }, 429, headers);
 		}
+		const hardLogin = await hardRateLimit(env, 'login|' + ip + '|' + email, 8, 10 * 60 * 1000);
+		if (hardLogin.blocked) {
+			return jsonResponse({ success: false, message: 'Terlalu banyak percobaan login. Tunggu beberapa menit lalu coba lagi.' }, 429, headers);
+		}
 		const adminEmail = (env.ADMIN_EMAIL || '').trim().toLowerCase();
 		if (!adminEmail || !env.ADMIN_PASSWORD_HASH || !env.JWT_SECRET) {
 			return jsonResponse({ success: false, message: 'Admin belum dikonfigurasi di Worker (ADMIN_EMAIL, ADMIN_PASSWORD_HASH, JWT_SECRET).' }, 503, headers);
@@ -857,6 +930,35 @@ export default {
 			}
 			try {
 				const bodyJson = await request.json();
+
+				/* Pengaman anti-hapus-tidak-sengaja.
+				   Dulu payload kosong (klien lama / token salah) menimpa
+				   seluruh konten owner jadi kosong. Sekarang payload yang
+				   benar-benar kosong DITOLAK kalau di server masih ada
+				   isi, kecuali klien mengirim force:true (owner sengaja
+				   menghapus semua). */
+				const arr = (v) => (Array.isArray(v) ? v : []);
+				const kosong = arr(bodyJson && bodyJson.announcements).length === 0
+					&& arr(bodyJson && bodyJson.events).length === 0
+					&& arr(bodyJson && bodyJson.banners).length === 0
+					&& !String((bodyJson && bodyJson.pinnedAnnouncement) || '').trim();
+				const force = bodyJson && bodyJson.force === true;
+				if (kosong && !force) {
+					const sekarang = await getContentFromAirtable(env);
+					const isi = sekarang && sekarang.content ? sekarang.content : {};
+					const isiLama = arr(isi.announcements).length + arr(isi.events).length + arr(isi.banners).length
+						+ (String(isi.pinnedAnnouncement || '').trim() ? 1 : 0);
+					if (isiLama > 0) {
+						return new Response(JSON.stringify({
+							ok: false,
+							error: 'Payload kosong ditolak: di server masih ada ' + isiLama + ' item konten owner. Kirim force:true hanya jika memang ingin mengosongkan semuanya.'
+						}), { status: 409, headers });
+					}
+				}
+
+				/* "force" hanya perintah kendali, jangan ikut disimpan. */
+				if (bodyJson && typeof bodyJson === 'object') delete bodyJson.force;
+
 				const result = await saveContentToAirtable(env, bodyJson);
 				return new Response(JSON.stringify({ ok: true, ...result }), { status: 200, headers });
 			} catch (e) {
@@ -892,6 +994,13 @@ export default {
 		const limit = orderSpamLimit(ip);
 		if (limit.blocked) {
 			const h = Object.assign({}, headers, { 'Retry-After': String(limit.retryAfterSec) });
+			return new Response(JSON.stringify({ ok: false, error: 'Terlalu banyak order dari perangkat ini. Coba lagi beberapa menit lagi.' }), { status: 429, headers: h });
+		}
+
+		/* Pembatas keras: satu Durable Object global, konsisten antar isolate. */
+		const hard = await hardRateLimit(env, 'order|' + ip, ORDER_MAX_PER_WINDOW, ORDER_WINDOW_MS);
+		if (hard.blocked) {
+			const h = Object.assign({}, headers, { 'Retry-After': String(hard.retryAfterSec) });
 			return new Response(JSON.stringify({ ok: false, error: 'Terlalu banyak order dari perangkat ini. Coba lagi beberapa menit lagi.' }), { status: 429, headers: h });
 		}
 

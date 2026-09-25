@@ -3,6 +3,16 @@ main = "worker.js"
 compatibility_date = "2026-09-25"
 workers_dev = true
 
+# Pembatas keras: satu instance Durable Object global, sehingga hitungan
+# rate limit konsisten antar isolate dan bertahan setelah restart.
+[[durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimiter"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RateLimiter"]
+
 [vars]
 # Hanya variabel PUBLIK (bukan secret). Secret asli tetap di
 # dashboard/secret put dan dipertahankan lewat --keep-vars.
