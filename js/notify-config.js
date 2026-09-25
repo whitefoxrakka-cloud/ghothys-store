@@ -65,5 +65,9 @@ window.GHOTHYS_NOTIFY_CONFIG = {
 	},
 
 	// Nomor WhatsApp customer untuk konfirmasi setelah bayar (format 62...).
-	waNumber: '6282137499434'
+	waNumber: '6282137499434',
+
+	// Email pemilik toko (hanya email ini yang bisa lihat & buka Owner Panel).
+	// Harus SAMA dengan email yang dipakai login admin (ADMIN_EMAIL di Worker).
+	ownerEmail: 'whitefox.rakka@gmail.com'
 };

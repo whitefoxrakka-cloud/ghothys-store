@@ -355,24 +355,28 @@
     }
   });
 
-/* Tombol OWNER PANEL muncul untuk user yang sudah login di toko.
-     Di dalam panel, hak menyimpan konten ke server tetap dijaga:
-     harus punya cookie admin (login lewat kotak Sinkronisasi Konten).
-     Jadi tombol ini BUKAN gerbang keamanan penuh, cuma akses UI. */
-  var ownerButtonChecked = false;
+/* Tombol OWNER PANEL hanya muncul untuk user yang sudah login di toko
+     DAN email-nya sama dengan ownerEmail di GHOTHYS_NOTIFY_CONFIG.
+     Owner email = admin email (ADMIN_EMAIL di Worker).
+     Di dalam panel, hak simpan ke server tetap butuh login admin
+     lewat kotak Sinkronisasi Konten. */
   function showOwnerButtonIfAllowed(){
     const list = document.querySelectorAll('.owner-panel-open');
     if(!list.length) return;
-    const tampil = !!window.currentUser;
-    list.forEach(function(btn){ btn.style.display = tampil ? 'inline-block' : 'none'; });
+    const ownerEmail = (window.GHOTHYS_NOTIFY_CONFIG?.ownerEmail || '').toLowerCase();
+    const userEmail = (window.currentUser?.email || '').toLowerCase();
+    const isOwner = !!window.currentUser && userEmail === ownerEmail && ownerEmail !== '';
+    list.forEach(function(btn){ btn.style.display = isOwner ? 'inline-block' : 'none'; });
   }
   window.refreshOwnerButton = showOwnerButtonIfAllowed;
 
   /* requireLoggedIn dipakai handler internal panel (buka manajer announc/event/banner).
-     Cukup login toko. Hak simpan ke server dicek terpisah via owner-sync.js. */
+     Cukup login toko + email owner. Hak simpan ke server dicek terpisah via owner-sync.js. */
   function requireLoggedIn(){
-    if(window.currentUser) return true;
-    window.showErrorToast('Login Dulu','Masuk ke akun toko dulu untuk membuka panel owner');
+    const ownerEmail = (window.GHOTHYS_NOTIFY_CONFIG?.ownerEmail || '').toLowerCase();
+    const userEmail = (window.currentUser?.email || '').toLowerCase();
+    if(window.currentUser && userEmail === ownerEmail) return true;
+    window.showErrorToast('Akses Ditolak','Hanya pemilik toko yang dapat mengakses panel ini');
     if(typeof window.openLoginModal==='function') window.openLoginModal();
     return false;
   }
