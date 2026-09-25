@@ -7,6 +7,12 @@
     document.getElementById('modal-title').textContent=game.name;
     document.getElementById('package-options').innerHTML=game.packages.map((p,i)=>{const dp=p.discount>0?p.price*(1-p.discount/100):p.price;return`<label class="border-2 rounded-lg p-4 cursor-pointer hover:border-purple-500" style="border-color:var(--border-color);"><input type="radio" name="package" value='${JSON.stringify(p)}' ${i===0?'required':''} class="mr-2"><div class="flex justify-between items-start"><div><span class="font-semibold" style="color:var(--text-primary)">${p.name}</span>${p.discount>0?`<div class="text-xs text-green-600">🔥 -${p.discount}%</div>`:''}</div><div class="text-purple-600 font-bold">Rp ${Math.floor(dp).toLocaleString('id-ID')}</div></div></label>`;}).join('');
     document.getElementById('available-points').textContent=window.currentUser.points||0;
+    /* Anti-spam: catat kapan form dibuka. Worker menolak order yang
+       dikirim < 2 detik setelah form dibuka (ciri bot), dan mengosongkan
+       kolom jebakan "website" supaya form yang dipakai ulang tetap aman. */
+    window.__ghothysOrderGuard={t:Date.now()};
+    const hpField=document.getElementById('website');
+    if(hpField) hpField.value='';
     const pv = document.getElementById('payment-success-view');
     const pf = document.getElementById('topup-form');
     if(pv) pv.style.display='none';

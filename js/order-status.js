@@ -28,12 +28,10 @@
 	'use strict';
 
 	var RELAY_URL = '';
-	var RELAY_SECRET = '';
 
 	function loadRelayConfig() {
 		var cfg = window.GHOTHYS_NOTIFY_CONFIG || {};
 		RELAY_URL = (cfg.relayUrl || '').replace(/\/+$/, '');
-		RELAY_SECRET = cfg.relaySecret || '';
 	}
 
 	function normalizeOrderId(raw) {

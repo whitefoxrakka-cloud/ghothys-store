@@ -58,8 +58,9 @@ async function sendToTelegram(token, chatId, text) {
    Konten owner (pengumuman/event/banner/pinned) disimpan sebagai
    SATU baris JSON di tabel Airtable "Content" dengan ORDER ID =
    'content_owner_1'. Semua pengunjung membaca baris ini lewat
-   GET /content; owner menulisnya lewat POST /content (dengan
-   X-Ghothys-Secret).
+   GET /content; owner menulisnya lewat POST /content (WAJIB salah
+   satu dari: token panel admin "Authorization: Bearer <token>",
+   X-Ghothys-Secret milik server, atau Cloudflare Access).
 
    Tabel Airtable "Content" (buat SEKALI lewat impor
    relay/airtable-content-template.csv):
@@ -206,15 +207,7 @@ async function saveToAirtable(env, p) {
 	return { ok: true, channel: 'airtable' };
 }
 
-function isValidOrder(p) {
-	if (!p || typeof p !== 'object') return false;
-	if (typeof p.order_id !== 'string' || !/^INV-\d{8}-\d+$/.test(p.order_id)) return false;
-	if (typeof p.game !== 'string' || !p.game) return false;
-	if (typeof p.uid !== 'string' || !p.uid) return false;
-	return true;
-}
-
-function formatOrder(p) {
+  function formatOrder(p) {
 	const rupiah = function(n) {
 		const v = parseInt(n, 10);
 		return (isFinite(v) && v > 0) ? ('Rp ' + v.toLocaleString('id-ID')) : '-';
@@ -288,6 +281,127 @@ function isOwnerAuthorized(request, env) {
 	const owner = (env.OWNER_EMAIL || '').trim().toLowerCase();
 	if (email && owner && email === owner) return true;
 	return false;
+}
+
+/* ------------------------------------------------------------------
+   OWNER CONTENT (/content) - sekarang bisa juga pakai token panel admin
+   supaya browser tidak perlu membawa secret sama sekali.
+   ------------------------------------------------------------------ */
+async function isContentWriteAllowed(request, env) {
+	if (isOwnerAuthorized(request, env)) return true;
+	const auth = (request.headers.get('Authorization') || '').trim();
+	const token = auth.replace(/^Bearer\s+/i, '').trim();
+	if (!token || !env.JWT_SECRET) return false;
+	const payload = await verifyJwt(env.JWT_SECRET, token);
+	return !!(payload && String(payload.role || '').toLowerCase() === 'admin');
+}
+
+/* ==================================================================
+   ANTI-SPAM ORDER (endpoint publik POST /)
+   ---------------------------------------------------------------
+   Endpoint order WAJIB bisa dipanggil browser pembeli tanpa login,
+   jadi tidak mungkin memakai secret (secret di file publik = bocor).
+   Yang dipakai: honeypot + dwell time + rate limit per IP +
+   cek duplikat Order ID + validasi ketat payload.
+   Layer ini menahan spam dan bot, bukan otentikasi.
+   ================================================================== */
+const orderAttempts = new Map();
+const ORDER_MAX_PER_WINDOW = 5;      // 5 order / 10 menit / IP
+const ORDER_WINDOW_MS = 10 * 60 * 1000;
+const DWELL_MIN_MS = 2000;           // form minimal terisi 2 detik
+const DWELL_MAX_MS = 24 * 60 * 60 * 1000;
+
+function orderSpamLimit(ip) {
+	const now = Date.now();
+	const list = (orderAttempts.get(ip) || []).filter((t) => (now - t) < ORDER_WINDOW_MS);
+	if (list.length >= ORDER_MAX_PER_WINDOW) {
+		orderAttempts.set(ip, list);
+		return { blocked: true, retryAfterSec: Math.ceil((ORDER_WINDOW_MS - (now - list[0])) / 1000) };
+	}
+	list.push(now);
+	orderAttempts.set(ip, list);
+	return { blocked: false, retryAfterSec: 0 };
+}
+
+/* Browser asli selalu mengirim header Sec-Fetch-*. Nilai header yang
+   tidak sesuai fetch() browser = ciri bot (curl/python/lynx).
+   Kalau semua header itu tidak ada sama sekali, hanya Origin dari daftar
+   ALLOWED_ORIGINS yang dianggap sah (browser lawas). */
+function looksLikeBrowserFetch(request, env) {
+	const mode = request.headers.get('Sec-Fetch-Mode');
+	const dest = request.headers.get('Sec-Fetch-Dest');
+	const site = request.headers.get('Sec-Fetch-Site');
+	const seen = [mode, dest, site].filter((v) => v !== null && v !== '').length;
+	if (seen === 0) {
+		const origin = (request.headers.get('Origin') || '').replace(/\/+$/, '').toLowerCase();
+		const allowed = String(env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim().replace(/\/+$/, '').toLowerCase()).filter(Boolean);
+		return allowed.length > 0 && allowed.indexOf(origin) !== -1;
+	}
+	if (seen < 3) return false;
+	if (mode !== 'cors' && mode !== 'same-origin' && mode !== 'navigate') return false;
+	if (dest !== 'empty' && dest !== 'json') return false;
+	if (site !== 'cross-site' && site !== 'same-site' && site !== 'same-origin' && site !== 'none') return false;
+	return true;
+}
+
+function checkOrderPayload(p) {
+	if (!p || typeof p !== 'object') return { ok: false, error: 'Payload bukan objek' };
+	const honeypot = String((p.hp !== undefined ? p.hp : p.website) || '').trim();
+	if (honeypot) return { ok: false, error: 'Ditolak (honeypot)' };
+	if (p.t !== undefined && p.t !== null && p.t !== '') {
+		/* t = 0 / tidak ada berarti halaman tidak mengirim info durasi
+		   (mis. versi lama yang masih tersimpan di cache browser).
+		   Yang penting: kalau ada, nilainya harus masuk akal. */
+		const t = Number(p.t);
+		if (!isFinite(t) || t < 0) return { ok: false, error: 'Ditolak (timestamp tidak valid)' };
+		if (t > 0) {
+			const since = Date.now() - t;
+			if (since < DWELL_MIN_MS) return { ok: false, error: 'Ditolak (form dikirim terlalu cepat)' };
+			if (since > DWELL_MAX_MS) return { ok: false, error: 'Ditolak (form terlalu lama)' };
+		}
+	}
+	if (typeof p.order_id !== 'string' || !/^INV-\d{8}-\d{1,6}$/.test(p.order_id.trim())) {
+		return { ok: false, error: 'Order ID tidak valid' };
+	}
+	const text = (v, max) => {
+		if (v === undefined || v === null) return '';
+		const s = String(v).trim();
+		return s.length > max ? s.slice(0, max) : s;
+	};
+	if (!text(p.game, 60)) return { ok: false, error: 'Field game wajib diisi' };
+	if (!text(p.uid, 40)) return { ok: false, error: 'Field UID wajib diisi' };
+	const priceNum = Number(String(p.price || '').replace(/[^0-9.]/g, ''));
+	if (!isFinite(priceNum) || priceNum < 0 || priceNum > 5000000) return { ok: false, error: 'Nominal tidak valid' };
+	return {
+		ok: true,
+		order: {
+			order_id: text(p.order_id, 32),
+			game: text(p.game, 60),
+			uid: text(p.uid, 40),
+			server: text(p.server, 30),
+			item: text(p.item, 120),
+			price: priceNum,
+			payment: text(p.payment, 40),
+			customer: text(p.customer, 60),
+			time: text(p.time, 40)
+		}
+	};
+}
+
+/* Cegah order ID yang sama terkirim berulang (spam/replay). */
+async function orderAlreadyExists(env, orderId) {
+	if (!env.AIRTABLE_PAT || !cfgValue(env, 'AIRTABLE_BASE_ID') || !env.AIRTABLE_TABLE_NAME) return false;
+	const url = 'https://api.airtable.com/v0/' + cfgValue(env, 'AIRTABLE_BASE_ID') + '/' +
+		encodeURIComponent(env.AIRTABLE_TABLE_NAME) + '?maxRecords=1&' +
+		'filterByFormula=' + encodeURIComponent('{Order ID}="' + String(orderId).replace(/"/g, '') + '"');
+	try {
+		const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + env.AIRTABLE_PAT } });
+		if (!res.ok) return false;
+		const j = await res.json();
+		return !!(j && Array.isArray(j.records) && j.records.length > 0);
+	} catch (e) {
+		return false;
+	}
 }
 
 /* ============================================================
@@ -679,7 +793,8 @@ export default {
            - GET  /content  -> publik, tanpa secret. Membaca konten
              owner (pengumuman/event/banner/pinned) dari tabel
              Airtable "Content" dan mengembalikannya sebagai JSON.
-           - POST /content  -> owner, WAJIB X-Ghothys-Secret.
+           - POST /content  -> owner, WAJIB token panel admin (Bearer)
+             atau X-Ghothys-Secret sisi server / Cloudflare Access.
              Menyimpan/memperbarui konten owner ke tabel "Content"
              (satu baris tunggal, ORDER_ID='content_owner_1').
 
@@ -723,37 +838,58 @@ export default {
 			return new Response(JSON.stringify({ ok: false, error: 'Method not allowed' }), { status: 405, headers });
 		}
 
-        if (request.url.includes('/content')) {
-            if (!isOwnerAuthorized(request, env)) {
-                return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 403, headers });
-            }
-            try {
-                const bodyJson = await request.json();
-                const result = await saveContentToAirtable(env, bodyJson);
-                return new Response(JSON.stringify({ ok: true, ...result }), { status: 200, headers });
-            } catch (e) {
-                return new Response(JSON.stringify({ ok: false, error: e.message }), { status: 500, headers });
-            }
-        }
-
-		if (!isOwnerAuthorized(request, env)) {
-			return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 403, headers });
+		if (request.url.includes('/content')) {
+			if (!(await isContentWriteAllowed(request, env))) {
+				return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 403, headers });
+			}
+			try {
+				const bodyJson = await request.json();
+				const result = await saveContentToAirtable(env, bodyJson);
+				return new Response(JSON.stringify({ ok: true, ...result }), { status: 200, headers });
+			} catch (e) {
+				return new Response(JSON.stringify({ ok: false, error: e.message }), { status: 500, headers });
+			}
 		}
 
+		/* ============================================================
+		   ENDPOINT ORDER (publik, tanpa secret)
+		   ------------------------------------------------------------
+		   Pembeli tidak punya akun, jadi tidak bisa membawa secret.
+		   Yang menjaga: honeypot, dwell time, rate limit per IP,
+		   cek duplikat Order ID, dan validasi ketat payload.
+		   ============================================================ */
 		let payload;
 		try {
 			payload = await request.json();
 		} catch (e) {
 			return new Response(JSON.stringify({ ok: false, error: 'Invalid JSON' }), { status: 400, headers });
 		}
-		if (!isValidOrder(payload)) {
-			return new Response(JSON.stringify({ ok: false, error: 'Not an order payload' }), { status: 400, headers });
+
+		const checked = checkOrderPayload(payload);
+		if (!checked.ok) {
+			return new Response(JSON.stringify({ ok: false, error: checked.error }), { status: 400, headers });
+		}
+		const cleanOrder = checked.order;
+
+		if (!looksLikeBrowserFetch(request, env)) {
+			return new Response(JSON.stringify({ ok: false, error: 'Permintaan ditolak' }), { status: 403, headers });
 		}
 
-		const text = formatOrder(payload);
+		const ip = (request.headers.get('CF-Connecting-IP') || 'tidak-known').trim();
+		const limit = orderSpamLimit(ip);
+		if (limit.blocked) {
+			const h = Object.assign({}, headers, { 'Retry-After': String(limit.retryAfterSec) });
+			return new Response(JSON.stringify({ ok: false, error: 'Terlalu banyak order dari perangkat ini. Coba lagi beberapa menit lagi.' }), { status: 429, headers: h });
+		}
+
+		if (await orderAlreadyExists(env, cleanOrder.order_id)) {
+			return new Response(JSON.stringify({ ok: true, duplicate: true, results: [{ channel: 'all', skipped: true, reason: 'order sudah tercatat' }] }), { status: 200, headers });
+		}
+
+		const text = formatOrder(cleanOrder);
 		const results = [];
 		try {
-			results.push(await saveToAirtable(env, payload));
+			results.push(await saveToAirtable(env, cleanOrder));
 		} catch (e) {
 			results.push({ channel: 'airtable', error: e.message });
 		}

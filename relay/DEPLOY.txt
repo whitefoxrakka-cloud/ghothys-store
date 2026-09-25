@@ -9,7 +9,9 @@ WORKER AKTIF
            WAJIB --keep-vars, kalau tidak semua variabel dashboard ikut terhapus.
 
 SECRET SUDAH TERPASANG (type secret, terenkripsi)
-  SECRET                    kata sandi untuk tulis konten (X-Ghothys-Secret)
+  SECRET                    kunci tulis konten dari sisi server (sudah dirotasi
+                             25/09/2026 karena sebelumnya sempat bocor di
+                             js/notify-config.js - nilai lama sudah tidak berlaku)
   AIRTABLE_PAT              Personal Access Token Airtable
   AIRTABLE_BASE_ID_SECRET   ID base Airtable
   DISCORD_WEBHOOK_URL_SECRET webhook notifikasi Discord (sudah diuji, HTTP 204)
@@ -35,8 +37,34 @@ MASIH PLAIN VARIABLE (nilai hanya di dashboard, belum dienkripsi)
 ENDPOINT
   GET  /content                      publik, baca konten owner
   GET  /order-status?order_id=INV-   publik, cek status pesanan
-  POST /content                      WAJIB X-Ghothys-Secret (atau Cloudflare Access)
-  POST / (order/notify)              WAJIB X-Ghothys-Secret (atau Cloudflare Access)
+  POST /content                      WAJIB salah satu: token panel admin
+                                     ("Authorization: Bearer <token>"),
+                                     X-Ghothys-Secret sisi server, atau
+                                     Cloudflare Access
+  POST / (order/notify)              publik TANPA secret (pembeli tidak punya
+                                     akun). Dilindungi anti-spam, bukan auth:
+
+ANTI-SPAM ORDER (sudah aktif, versi 2026-09-25)
+  1. Header Sec-Fetch-Mode/Dest/Site wajib ada dan nilainya sesuai fetch()
+     browser. Kalau ketiganya tidak ada, hanya Origin dari ALLOWED_ORIGINS
+     yang diterima (browser lawas). curl/python/lynx = 403.
+  2. Honeypot: field tersembunyi name="website" di #topup-form. Terisi = 400.
+  3. Dwell time: klien kirim t = kapan form dibuka. < 2 detik = 400.
+     t kosong/0 tetap diterima agar halaman lama di cache tidak rusak.
+  4. Rate limit 5 order / 10 menit / IP (balas 429 + Retry-After).
+     Klien otomatis coba lagi sekali setelah jeda 3,2 detik.
+  5. Cek duplikat Order ID di Airtable (balas 200 duplicate, tidak kirim
+     ulang ke Discord/Telegram).
+  6. Validasi ketat: order_id /^INV-\d{8}-\d{1,6}$/, game & uid wajib,
+     price 0-5.000.000, panjang tiap field dibatasi.
+  CATATAN: ini menahan spam/bot, bukan otentikasi. Kalau butuh proteksi
+  lebih ketat (mis. wajib login/OTP), itu perubahan terpisah.
+
+  PENTING: relaySecret di js/notify-config.js SUDAH DIKOSONGKAN dan
+  secret lama sudah dirotasi. Jangan pernah menaruh secret di file publik
+  (view source bisa dilihat siapa pun). Untuk tulis konten owner, browser
+  memakai token panel admin (sessionStorage admin_jwt) -> wajib login di
+  /admin/ pada tab yang sama.
 
 ENDPOINT PANEL ADMIN (butuh header "Authorization: Bearer <token>", 8 jam)
   POST   /admin/login                { email, password } -> { data: { token, user } }
@@ -73,11 +101,21 @@ ROTASI PASSWORD ADMIN
 ATURAN WAJIB
   1. Selalu deploy dengan --keep-vars.
   2. Jangan pernah print nilai secret ke terminal/chat.
-  3. Untuk akses dari domain lain, tambahkan origin-nya ke ALLOWED_ORIGINS,
+  3. Untuk akses dari domain lain, tambahkan originnya ke ALLOWED_ORIGINS,
      lalu deploy ulang (var dashboard tidak otomatis berubah).
   4. Secret hanya boleh diisi lewat npx wrangler secret put (bukan ditulis di file).
   5. Backup worker.js sebelum mengubah endpoint, misal:
      copy worker.js %TEMP%\worker-YYYYMMDD.bak
+  6. JANGAN PERNAH menaruh secret/API key/webhook di file yang dipublikasikan
+     ke GitHub Pages (js/*.js, index.html, admin/*). File publik = terbuka untuk
+     semua orang. Rahasiakan lewat Cloudflare env atau token panel admin.
+  7. Kalau secret sempat bocor di file publik: rotasi seketika di Cloudflare
+     (nilai lama langsung mati), kosongkan dari file, lalu commit + deploy.
+
+VERSI WORKER
+  2026-09-25  4b4ddae6 anti-spam order (honeypot, dwell, rate limit, dedupe)
+  2026-09-25  812abb3d perbaikan cek dwell time (t=0 tidak ditolak)
+  2026-09-25  bf7dc2cd Rotasi SECRET + wajibnya header Sec-Fetch-* (versi aktif)
 
 ROLLBACK
   npx wrangler rollback <version-id-sebelumnya>

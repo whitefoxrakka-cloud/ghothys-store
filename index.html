@@ -5113,6 +5113,8 @@
     </div><button data-action="close-modal" class="text-3xl" style="color:var(--text-secondary)">×</button>
    </div>
    <form id="topup-form">
+    <!-- Jebakan bot (honeypot): disembunyikan dari pengguna, diabaikan pembaca layar, dan otomatis terisi bot yang mengirim form. Worker menolak order yang mengisi kolom ini. -->
+    <div aria-hidden="true" class="gh-hp" style="position:absolute!important;left:-9999px!important;top:-9999px!important;width:1px!important;height:1px!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important;"><label for="website">Website</label><input type="text" id="website" name="website" tabindex="-1" autocomplete="off" value=""></div>
     <div class="mb-6">
     <label class="block font-semibold mb-2" style="color:var(--text-primary)" for="user-id">User ID</label><input type="text" id="user-id" required="" placeholder="Masukkan User ID" class="w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:border-purple-500" style="border-color:var(--border-color);background:var(--bg-primary);color:var(--text-primary);">
     </div>

@@ -7,11 +7,13 @@
 
    ALUR:
    - Owner menyimpan data (js/owner.js -> saveOwnerData):
-       window.syncOwnerContent(data) dipanggil -> POST {relayUrl}/content
-       dengan header X-Ghothys-Secret = relaySecret.
-       Non-blocking / fire-and-forget; gagal TIDAK mengganggu panel.
+        window.syncOwnerContent(data) dipanggil -> POST {relayUrl}/content
+        dengan header "Authorization: Bearer <token admin>".
+        Token diambil dari sessionStorage admin_jwt, jadi owner perlu
+        login di panel /admin/ pada tab yang sama sebelum menyimpan.
+        Non-blocking / fire-and-forget; gagal TIDAK mengganggu panel.
    - Pengunjung membuka toko:
-       bridge ini membaca {relayUrl}/content (GET, publik, tanpa secret).
+       bridge ini membaca {relayUrl}/content (GET, publik, tanpa token).
        Kalau ada konten -> render pengumuman/event/banner dinamis ke
        grid publik (an-grid / ev-grid / banner area).
        Kalau relay belum aktif / kosong -> biarkan grid statis yang
@@ -19,15 +21,18 @@
 
    KONFIGURASI:
    Baca dari js/notify-config.js -> window.GHOTHYS_NOTIFY_CONFIG
-   (relayUrl, relaySecret). Pastikan relayUrl & relaySecret SAMA
-   dengan yang dipakai pembayaran supaya satu relay, satu secret.
+   (hanya relayUrl). Tidak ada secret di file publik anymore; token
+   admin disimpan di sessionStorage oleh admin/js/auth.js.
    ============================================================ */
 
 (function(){
   var CONFIG = (window.GHOTHYS_NOTIFY_CONFIG) ? window.GHOTHYS_NOTIFY_CONFIG : {};
   var relayUrl = CONFIG.relayUrl || '';
-  var relaySecret = CONFIG.relaySecret || '';
   var lastPushWarned = false;
+
+  function adminToken(){
+    try { return sessionStorage.getItem('admin_jwt') || ''; } catch(e){ return ''; }
+  }
 
   function escapeHtml(s){
     if(!s) return '';
@@ -46,6 +51,14 @@
      ------------------------------------------------------------ */
   window.syncOwnerContent = function(data){
     if(!relayUrl || !/^https:\/\//.test(relayUrl)) return { ok: true, skipped: true };
+    var token = adminToken();
+    if(!token){
+      if(!lastPushWarned){
+        lastPushWarned = true;
+        console.warn('[content-bridge] Belum login di panel /admin/ pada tab ini - konten owner tidak dikirim ke relay.');
+      }
+      return { ok: false, skipped: true, reason: 'admin login required' };
+    }
     var payload = {
       announcements: (data && data.announcements) || [],
       events: (data && data.events) || [],
@@ -58,7 +71,7 @@
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Ghothys-Secret': relaySecret
+        'Authorization': 'Bearer ' + token
       },
       body: JSON.stringify(payload)
     }).then(function(res){

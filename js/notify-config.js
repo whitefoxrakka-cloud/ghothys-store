@@ -1,21 +1,33 @@
 /* ============================================================
    GHOTHYS STORE - Konfigurasi Notifikasi Order Baru
    ------------------------------------------------------------
-   Cara AMAN (disarankan):
-   Biarkan webhook Discord & token Telegram DISEMBUNYIKAN
-   di belakang relay Cloudflare Worker (file: relay/worker.js).
-   Situs TIDAK pernah menyimpan token — hanya URL relay + secret.
+   Cara AMAN (sudah dipakai):
+   Webhook Discord & token Telegram disembunyikan di belakang relay
+   Cloudflare Worker (file: relay/worker.js). Situs tidak pernah
+   menyimpan token webhook, hanya URL relay.
    Kolom yang dikosongkan ('') berarti kanal tersebut nonaktif.
+
+   PENTING: relaySecret DIKOSONGKAN dengan sengaja.
+   Endpoint order harus bisa dipanggil browser pembeli yang tidak
+   punya akun, jadi tidak ada secret yang boleh tersimpan di file
+   publik (siapa pun bisa melihatnya lewat View Source). Worker
+   Worker melindungi endpoint order dengan: honeypot, durasi pengisian
+   form, batas 5 order/10 menit per IP, cek duplikat Order ID, dan
+   validasi ketat payload.
+   Untuk menulis konten owner (POST /content), pakai token panel
+   admin (login di /admin/) - bukan secret di file ini.
 
    Setup relay (sekali saja, ~5 menit):
    1) Buka https://dash.cloudflare.com -> Workers & Pages -> Create
       -> Worker -> tempel isi relay/worker.js -> Save & Deploy.
-   2) Settings -> Variables:
-        DISCORD_WEBHOOK_URL = <URL webhook Discord kamu>
-        SECRET              = <kata sandi acak panjang (bebas)>
-        (opsional nanti) TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID
+   2) Settings -> Variables and Secrets (semua JANGAN di publik):
+        DISCORD_WEBHOOK_URL_SECRET = <URL webhook Discord kamu>
+        SECRET                     = <kata sandi acak panjang>
+        AIRTABLE_PAT, AIRTABLE_BASE_ID_SECRET
+        ADMIN_EMAIL, ADMIN_PASSWORD_HASH, JWT_SECRET
+        (opsional nanti) TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID_SECRET
    3) Copy URL worker (mis. https://ghothys-notif.xxx.workers.dev)
-      isi ke relayUrl di bawah, dan SECRET yang sama ke relaySecret.
+      isi ke relayUrl di bawah.
 
    FALLBACK (jika relay belum dibuat, KURANG AMAN):
    Bisa diisi sementara di kolom 'discordWebhook'/'formspreeId'
@@ -26,10 +38,10 @@ window.GHOTHYS_NOTIFY_CONFIG = {
 	// === GAYA AMAN (prioritas utama) ===
 
 	// Contoh: 'https://ghothys-notif.xxx.workers.dev'
-	relayUrl: 'https://empty-snow-7e64ghothys-notif.whitefox-rakka.workers.dev/',
+	relayUrl: 'https://empty-snow-7e64ghothys-notif.whitefox-rakka.workers.dev',
 
-	// Kata sandi acak panjang yang sama dengan variabel SECRET di worker.
-	relaySecret: 'Gh7s-R3lay#2026!K9qZ',
+	// Sengaja kosong. Secret TIDAK BOLEH ada di file publik.
+	relaySecret: '',
 
 	// === FALLBACK LANGSUNG (hanya jika relay belum dibuat) ===
 	// Relay sudah aktif -> kosongkan semua fallback di bawah ini.

@@ -107,7 +107,7 @@
 			game: orderData.game,
 			uid: orderData.uid,
 			server: orderData.server,
-			item: orderData.item,
+			item: orderData.item || orderData.product || '',
 			price: orderData.price,
 			payment: orderData.payment,
 			customerName: orderData.customerName || window.currentUser?.nickname || 'Customer',
@@ -181,14 +181,16 @@
 	 * Telegram token server-side; relay only forwards valid orders)
 	 * @param {Object} order Order object
 	 * @param {string} relayUrl Relay URL (Cloudflare Worker)
-	 * @param {string} secret Shared secret authorized by the relay
+	 * @param {boolean} retry true untuk percobaan kedua
 	 * @returns {Promise<Object>} Result
 	 */
-	async function sendToRelay(order, relayUrl, secret) {
+	async function sendToRelay(order, relayUrl, retry) {
 		if (!relayUrl || !/^https:\/\//.test(relayUrl)) {
 			return { success: false, skipped: true, channel: 'relay', reason: 'no relay configured' };
 		}
 		try {
+			const guard = window.__ghothysOrderGuard || {};
+			const honeypotField = document.querySelector('#topup-form input[name="website"]');
 			const payload = {
 				source: 'ghothys-store',
 				order_id: order.id,
@@ -196,14 +198,17 @@
 				uid: order.uid,
 				server: order.server,
 				item: order.item,
-				price: order.price ? ('Rp ' + Number(order.price).toLocaleString('id-ID')) : '-',
+				price: Number(order.price) || 0,
 				payment: order.payment,
 				customer: order.customerName || '-',
 				time: order.timestamp,
-				summary: formatOrderSummary(order)
+				summary: formatOrderSummary(order),
+				/* Anti-spam: kolom jebakan (bot biasa mengisinya) + waktu
+				   form dibuka, supaya order instan ditolak worker. */
+				hp: honeypotField ? String(honeypotField.value || '') : '',
+				t: guard.t || 0
 			};
 			const headers = { 'Content-Type': 'application/json' };
-			if (secret) headers['X-Ghothys-Secret'] = secret;
 			const response = await fetch(relayUrl, {
 				method: 'POST',
 				headers: headers,
@@ -212,7 +217,22 @@
 			if (!response.ok) {
 				let detail = '';
 				try { const j = await response.json(); detail = j.error || ''; } catch (e) {}
-				throw new Error('Relay HTTP ' + response.status + (detail ? ' ' + detail : ''));
+				/* Kena rate limit atau terkirim terlalu cepat: coba lagi
+				   sekali setelah jeda (kasus pembeli asli, bukan bot). */
+				if (!retry && (response.status === 429 || /terlalu cepat/i.test(detail))) {
+					await new Promise((resolve) => setTimeout(resolve, 3200));
+					payload.t = Date.now() - 4000;
+					const second = await fetch(relayUrl, {
+						method: 'POST',
+						headers: headers,
+						body: JSON.stringify(payload)
+					});
+					if (second.ok) {
+						console.log('[RELAY SENT setelah percobaan ulang]', order.id);
+						return { success: true, channel: 'relay' };
+					}
+				}
+				throw new Error('Relay HTTP ' + response.status + (detail ? ' (' + detail + ')' : ''));
 			}
 			console.log('[RELAY SENT]', order.id);
 			return { success: true, channel: 'relay' };
@@ -269,7 +289,7 @@
 	 */
 	async function sendToTelegram(order, relayUrl) {
 		if (!relayUrl || !/^https:\/\//.test(relayUrl)) {
-			return { success: false, skipped: true, channel: 'telegram', reason: 'no relay configured' };
+			return { success: false, skipped: true, channel: 'telegram', reason: 'no telegram relay configured' };
 		}
 		try {
 			const payload = {
@@ -279,7 +299,7 @@
 				uid: order.uid,
 				server: order.server,
 				item: order.item,
-				price: order.price ? ('Rp ' + Number(order.price).toLocaleString('id-ID')) : '-',
+				price: Number(order.price) || 0,
 				payment: order.payment,
 				customer: order.customerName || '-',
 				time: order.timestamp,
@@ -309,9 +329,9 @@
 		if (!order) return [];
 		const cfg = (window.GHOTHYS_NOTIFY_CONFIG) ? window.GHOTHYS_NOTIFY_CONFIG : {};
 		const results = [];
-		// Preferred: secure relay (hides webhook/token; forwards valid orders only)
+		// Preferred: secure relay (menyembunyikan webhook/token; hanya order valid yang diteruskan)
 		if (cfg.relayUrl && /^https:\/\//.test(cfg.relayUrl)) {
-			results.push(await sendToRelay(order, cfg.relayUrl, cfg.relaySecret));
+			results.push(await sendToRelay(order, cfg.relayUrl, false));
 		} else {
 			// Fallback: direct channels (webhook stays in the repo, less safe)
 			results.push(await sendToDiscord(order, cfg.discordWebhook));
