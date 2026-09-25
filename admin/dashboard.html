@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Monitoring - Ghothys Store</title>
   <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/order-message.css" />
+  <script src="../js/notify-config.js"></script>
 </head>
 <body>
   <div style="max-width: 720px; margin: 36px auto; padding: 0 16px;">
@@ -20,6 +22,70 @@
          style="display:inline-block; padding:14px 22px; background:var(--accent,#7c3aed); color:#fff; border-radius:12px; font-weight:900; text-decoration:none;">Buka Dashboard Airtable →</a>
     </div>
 
+    <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:16px; box-shadow:var(--shadow); padding:22px; margin-bottom:14px;">
+      <div style="font-size:15px; font-weight:900; color:var(--text-primary); margin-bottom:10px;">Bantu Proses Order (Salin Detail Order)</div>
+      <div style="color:var(--text-secondary); font-weight:600; font-size:13px; line-height:1.7; margin-bottom:14px;">
+        Isi data order, klik <strong>Buat Template</strong>, lalu salin atau kirim langsung ke pembeli lewat WhatsApp.
+        Template otomatis berisi status, link cek status, dan detail pembayaran.
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px;">
+        <div>
+          <label class="gm-msg-label" for="gm-order-id">Order ID</label>
+          <input class="gm-msg-input" type="text" id="gm-order-id" placeholder="INV-260925-0001 atau 0001" maxlength="32">
+        </div>
+        <div>
+          <label class="gm-msg-label" for="gm-customer-name">Nama Pembeli</label>
+          <input class="gm-msg-input" type="text" id="gm-customer-name" placeholder="Nama panggilan" maxlength="60">
+        </div>
+        <div>
+          <label class="gm-msg-label" for="gm-customer-wa">WhatsApp Pembeli (opsional)</label>
+          <input class="gm-msg-input" type="text" id="gm-customer-wa" placeholder="628xxxxxxxxxx" inputmode="numeric" maxlength="18">
+        </div>
+        <div>
+          <label class="gm-msg-label" for="gm-game">Game</label>
+          <input class="gm-msg-input" type="text" id="gm-game" placeholder="Mobile Legends" maxlength="60">
+        </div>
+        <div>
+          <label class="gm-msg-label" for="gm-product">Item</label>
+          <input class="gm-msg-input" type="text" id="gm-product" placeholder="86 Diamonds" maxlength="80">
+        </div>
+        <div>
+          <label class="gm-msg-label" for="gm-uid">User ID</label>
+          <input class="gm-msg-input" type="text" id="gm-uid" placeholder="111222333" maxlength="40">
+        </div>
+        <div>
+          <label class="gm-msg-label" for="gm-server">Server (opsional)</label>
+          <input class="gm-msg-input" type="text" id="gm-server" placeholder="2250" maxlength="30">
+        </div>
+        <div>
+          <label class="gm-msg-label" for="gm-price">Total</label>
+          <input class="gm-msg-input" type="text" id="gm-price" placeholder="25500" inputmode="numeric" maxlength="16">
+        </div>
+        <div>
+          <label class="gm-msg-label" for="gm-payment">Metode Bayar</label>
+          <input class="gm-msg-input" type="text" id="gm-payment" placeholder="DANA" maxlength="40">
+        </div>
+        <div>
+          <label class="gm-msg-label" for="gm-status">Status</label>
+          <select class="gm-msg-input" id="gm-status"></select>
+        </div>
+      </div>
+
+      <div style="margin-top:14px;">
+        <label class="gm-msg-label" for="gm-message">Template Pesan (bisa diedit bebas)</label>
+        <textarea class="gm-msg-text" id="gm-message" spellcheck="false"></textarea>
+      </div>
+
+      <div class="gm-actions">
+        <button type="button" class="gm-btn" id="gm-build">Buat Template</button>
+        <button type="button" class="gm-btn gm-btn-ghost" id="gm-copy">Salin Detail Order</button>
+        <a class="gm-btn gm-btn-ghost" id="gm-wa" href="#" target="_blank" rel="noopener">Buka WhatsApp</a>
+      </div>
+
+      <p class="gm-meta">Baris paling bawah (nomor WA pembeli) hanya untuk catatan internal — hapus sebelum kirim ke pembeli.</p>
+    </div>
+
     <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:16px; box-shadow:var(--shadow); padding:22px;">
       <div style="font-size:15px; font-weight:900; color:var(--text-primary); margin-bottom:10px;">Notifikasi Otomatis (sudah aktif)</div>
       <div style="color:var(--text-secondary); font-weight:600; font-size:13px; line-height:1.7;">
@@ -33,5 +99,6 @@
       </div>
     </div>
   </div>
+  <script src="js/order-message.js"></script>
 </body>
 </html>

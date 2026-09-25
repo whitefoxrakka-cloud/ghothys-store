@@ -285,7 +285,12 @@
         showPaymentView({
           orderId: orderId,
           total: Math.floor(finalPrice),
-          payment: payment
+          payment: payment,
+          game: window.currentGame ? window.currentGame.name : '',
+          product: pkg ? pkg.name : '',
+          uid: userId,
+          server: serverId,
+          customerName: window.currentUser.nickname || window.currentUser.name || ''
         });
 
         window.updateUI();
@@ -324,6 +329,78 @@
     }
   };
 
+  function formatOrderDetail(info, account, ownerName, cfg){
+    const store = cfg.storeName || 'Ghothys Store';
+    const total = 'Rp ' + Number(info.total || 0).toLocaleString('id-ID');
+    const lines = [
+      '*' + store + ' — BUKTI PESANAN*',
+      '',
+      'Order ID : ' + (info.orderId || '-'),
+      'Nama     : ' + (info.customerName || '-'),
+      'Game     : ' + (info.game || '-'),
+      'Item     : ' + (info.product || '-'),
+      'User ID  : ' + (info.uid || '-')
+    ];
+    if(info.server) lines.push('Server   : ' + info.server);
+    lines.push(
+      'Total    : ' + total,
+      'Bayar    : ' + (info.payment || '-') + ' a.n. ' + (ownerName || store),
+      '',
+      'Transfer ke: ' + account,
+      '',
+      'Cek status pesanan: ' + location.origin + location.pathname + '#order-status-section',
+      '',
+      'Mohon kirim screenshot bukti transfer di chat ini. Pesanan diproses 1-5 menit setelah pembayaran dikonfirmasi.'
+    );
+    return lines.join('\n');
+  }
+
+  function buildConfirmMessage(info){
+    const cfg = (window.GHOTHYS_NOTIFY_CONFIG) ? window.GHOTHYS_NOTIFY_CONFIG : {};
+    const store = cfg.storeName || 'Ghothys Store';
+    const total = 'Rp ' + Number(info.total || 0).toLocaleString('id-ID');
+    return [
+      'Halo ' + store + ', saya sudah melakukan pembayaran.',
+      '',
+      'Order ID : ' + (info.orderId || '-'),
+      'Nama     : ' + (info.customerName || '-'),
+      'Game     : ' + (info.game || '-'),
+      'Item     : ' + (info.product || '-'),
+      'User ID  : ' + (info.uid || '-') + (info.server ? ' (Server ' + info.server + ')' : ''),
+      'Total    : ' + total,
+      'Metode   : ' + (info.payment || '-'),
+      '',
+      'Berikut bukti transfer saya:'
+    ].join('\n');
+  }
+
+  function copyText(text, okTitle, okMessage){
+    const done = ()=>{ window.showToast && window.showToast(okTitle, okMessage); };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done).catch(()=>{ fallbackCopy(text); });
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  function fallbackCopy(text){
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly','');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch(e) { ok = false; }
+    document.body.removeChild(ta);
+    if(ok){
+      window.showToast && window.showToast('✅ Tersalin', 'Detail pesanan disalin');
+    } else {
+      window.prompt('Salin manual teks berikut:', text);
+    }
+  }
+
   /* Payment instructions view — shown after order is created */
   function showPaymentView(info){
     const view = document.getElementById('payment-success-view');
@@ -342,29 +419,39 @@
     setText('pay-account', account);
     setText('pay-account-owner', 'a.n. ' + name);
 
-    // WhatsApp confirm link (order id + total prefilled)
+    const detailText = formatOrderDetail(info, account, name, cfg);
+    const confirmText = buildConfirmMessage(info);
+
+    const detailPre = document.getElementById('pay-detail-text');
+    if(detailPre) detailPre.textContent = detailText;
+
+    const toggleBtn = document.getElementById('pay-detail-toggle');
+    const detailBox = document.getElementById('pay-detail-box');
+    if(toggleBtn && detailBox){
+      toggleBtn.onclick = function(){
+        const open = detailBox.style.display !== 'none';
+        detailBox.style.display = open ? 'none' : 'block';
+        toggleBtn.textContent = open ? 'Lihat Detail Pesanan' : 'Sembunyikan Detail';
+      };
+    }
+
     const waBtn = document.getElementById('pay-wa-btn');
     if(waBtn){
-      const msg = encodeURIComponent(
-        'Halo, saya sudah melakukan pembayaran.\n\n' +
-        'Order ID: ' + info.orderId + '\n' +
-        'Metode: ' + info.payment + '\n' +
-        'Total: Rp ' + Number(info.total || 0).toLocaleString('id-ID') + '\n\n' +
-        'Berikut bukti transfer saya:'
-      );
       const wa = cfg.waNumber || '6282137499434';
-      waBtn.href = 'https://wa.me/' + wa + '?text=' + msg;
+      waBtn.href = 'https://wa.me/' + wa + '?text=' + encodeURIComponent(confirmText);
     }
 
     const copyBtn = document.getElementById('pay-copy-btn');
     if(copyBtn){
       copyBtn.onclick = function(){
-        try {
-          navigator.clipboard.writeText(account);
-          window.showToast && window.showToast('✅ Tersalin', 'Nomor disalin: ' + account);
-        } catch(e){
-          prompt('Salin nomor berikut:', account);
-        }
+        copyText(account, '✅ Tersalin', 'Nomor disalin: ' + account);
+      };
+    }
+
+    const copyDetailBtn = document.getElementById('pay-copy-detail-btn');
+    if(copyDetailBtn){
+      copyDetailBtn.onclick = function(){
+        copyText(detailText, '✅ Tersalin', 'Detail pesanan disalin, paste ke chat mana saja');
       };
     }
 
@@ -381,4 +468,5 @@
   }
 
   window.showPaymentView = showPaymentView;
+  window.buildConfirmMessage = buildConfirmMessage;
 })();

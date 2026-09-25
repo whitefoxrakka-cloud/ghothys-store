@@ -59,7 +59,7 @@
 	}
 
 	function statusBadge(status) {
-		var s = (status || '').toLowerCase();
+		var s = (status || '').toLowerCase().trim();
 		var label = status || '-';
 		var cls = 'os-badge os-badge-pending';
 		var dot = 'rgba(245,158,11,0.9)';
@@ -116,6 +116,16 @@
 			'<div id="order-status-result">',
 			innerHtml,
 			'</div>',
+			'<div id="order-status-refresh" class="os-refresh" hidden>',
+			'<div class="os-refresh-left">',
+			'<span class="os-dot" id="os-refresh-dot"></span>',
+			'<span id="os-refresh-text">Otomatis diperbarui</span>',
+			'</div>',
+			'<div class="os-refresh-right">',
+			'<button type="button" class="os-link-btn" id="os-refresh-now">Refresh sekarang</button>',
+			'<button type="button" class="os-link-btn" id="os-refresh-toggle">Matikan</button>',
+			'</div>',
+			'</div>',
 			'</div>',
 			'</section>'
 		].join('');
@@ -159,11 +169,84 @@
 		if (el) el.innerHTML = html;
 	}
 
-	async function cekStatusOrder(orderIdRaw) {
+	var REFRESH_SECONDS = 30;
+	var activeOrderId = '';
+	var autoRefreshOn = true;
+	var secondsLeft = REFRESH_SECONDS;
+	var refreshTimer = null;
+	var lastRenderedStatus = '';
+
+	function getRefreshBar() {
+		return document.getElementById('order-status-refresh');
+	}
+
+	function paintRefreshBar() {
+		var bar = getRefreshBar();
+		if (!bar) return;
+		var hasOrder = !!activeOrderId;
+		bar.hidden = !hasOrder;
+		if (!hasOrder) return;
+
+		var dot = document.getElementById('os-refresh-dot');
+		var text = document.getElementById('os-refresh-text');
+		var toggle = document.getElementById('os-refresh-toggle');
+
+		if (dot) dot.className = autoRefreshOn ? 'os-dot' : 'os-dot is-off';
+		if (text) {
+			text.textContent = autoRefreshOn
+				? 'Otomatis diperbarui dalam ' + secondsLeft + ' detik'
+				: 'Pembaruan otomatis dimatikan';
+		}
+		if (toggle) toggle.textContent = autoRefreshOn ? 'Matikan' : 'Nyalakan';
+	}
+
+	function stopAutoRefresh() {
+		if (refreshTimer !== null) {
+			clearInterval(refreshTimer);
+			refreshTimer = null;
+		}
+	}
+
+	function startAutoRefresh() {
+		stopAutoRefresh();
+		secondsLeft = REFRESH_SECONDS;
+		paintRefreshBar();
+		if (!autoRefreshOn || !activeOrderId) return;
+		refreshTimer = setInterval(function () {
+			if (document.hidden) return;
+			secondsLeft -= 1;
+			if (secondsLeft <= 0) {
+				secondsLeft = REFRESH_SECONDS;
+				runAutoRefresh();
+			}
+			paintRefreshBar();
+		}, 1000);
+	}
+
+	async function runAutoRefresh() {
+		if (!activeOrderId) return;
+		await cekStatusOrder(activeOrderId, true);
+	}
+
+	function setActiveOrder(orderId) {
+		var nextId = orderId || '';
+		if (nextId !== activeOrderId) notifiedStatus = '';
+		activeOrderId = nextId;
+		if (activeOrderId) {
+			startAutoRefresh();
+		} else {
+			stopAutoRefresh();
+			secondsLeft = REFRESH_SECONDS;
+			paintRefreshBar();
+		}
+	}
+
+	async function cekStatusOrder(orderIdRaw, silent) {
 		var orderId = normalizeOrderId(orderIdRaw);
 		loadRelayConfig();
 
 		if (!RELAY_URL) {
+			setActiveOrder('');
 			renderResult([
 				'<div class="os-empty">',
 				'<div class="os-empty-title">Layanan cek status belum aktif.</div>',
@@ -174,17 +257,21 @@
 		}
 
 		if (!orderId) {
+			setActiveOrder('');
 			showHint('Masukkan Order ID dulu.', true);
 			return;
 		}
 		if (!isValidOrderId(orderId)) {
+			setActiveOrder('');
 			showHint('Format Order ID tidak valid. Contoh: INV-26012026-0001', true);
 			return;
 		}
 
 		setBusy(true);
-		showHint('');
-		renderResult('<div class="os-empty"><div class="os-empty-title">Mengecek status pesanan\u2026</div></div>');
+		if (!silent) showHint('');
+		if (!silent) {
+			renderResult('<div class="os-empty"><div class="os-empty-title">Mengecek status pesanan\u2026</div></div>');
+		}
 
 		var url = RELAY_URL + '/order-status?order_id=' + encodeURIComponent(orderId);
 		try {
@@ -197,6 +284,7 @@
 				throw new Error(data.error ? String(data.error) : 'Gagal memuat status');
 			}
 			if (!data.found || !data.order) {
+				setActiveOrder('');
 				renderResult([
 					'<div class="os-empty">',
 					'<div class="os-empty-title">Order tidak ditemukan.</div>',
@@ -205,8 +293,20 @@
 				].join(''));
 				return;
 			}
+			setActiveOrder(orderId);
+			var nextStatus = String((data.order && data.order.status) || '');
+			if (silent && nextStatus && nextStatus === lastRenderedStatus) {
+				secondsLeft = REFRESH_SECONDS;
+				paintRefreshBar();
+				return;
+			}
+			lastRenderedStatus = nextStatus;
 			renderResult(renderOrderCard(data.order));
+			if (silent && nextStatus && lastRenderedStatus) {
+				showStatusToast(nextStatus);
+			}
 		} catch (e) {
+			if (!silent) setActiveOrder('');
 			renderResult([
 				'<div class="os-empty">',
 				'<div class="os-empty-title">Gagal memuat status pesanan.</div>',
@@ -216,7 +316,22 @@
 			].join(''));
 		} finally {
 			setBusy(false);
+			paintRefreshBar();
 		}
+	}
+
+	var notifiedStatus = '';
+
+	function showStatusToast(status) {
+		if (!status || status === notifiedStatus) return;
+		notifiedStatus = status;
+		var msg = 'Status pesanan kamu berubah: ' + status;
+		try {
+			if (typeof window.showToast === 'function') {
+				window.showToast('Status Pesanan Diperbarui', msg);
+				return;
+			}
+		} catch (_) {}
 	}
 
 	function urlTransfer(u) {
@@ -229,7 +344,43 @@
 		if (!form || !input) return;
 		form.addEventListener('submit', function (e) {
 			e.preventDefault();
-			cekStatusOrder(input.value);
+			cekStatusOrder(input.value, false);
+		});
+
+		input.addEventListener('input', function () {
+			if (normalizeOrderId(input.value) !== activeOrderId) {
+				setActiveOrder('');
+			}
+		});
+
+		var nowBtn = document.getElementById('os-refresh-now');
+		if (nowBtn) {
+			nowBtn.addEventListener('click', function () {
+				if (!activeOrderId) return;
+				secondsLeft = REFRESH_SECONDS;
+				runAutoRefresh();
+			});
+		}
+
+		var toggleBtn = document.getElementById('os-refresh-toggle');
+		if (toggleBtn) {
+			toggleBtn.addEventListener('click', function () {
+				autoRefreshOn = !autoRefreshOn;
+				if (autoRefreshOn) {
+					startAutoRefresh();
+				} else {
+					stopAutoRefresh();
+					paintRefreshBar();
+				}
+			});
+		}
+
+		document.addEventListener('visibilitychange', function () {
+			if (document.hidden) {
+				stopAutoRefresh();
+			} else if (autoRefreshOn && activeOrderId) {
+				startAutoRefresh();
+			}
 		});
 	}
 
@@ -237,6 +388,7 @@
 		loadRelayConfig();
 		injectSection();
 		bindForm();
+		paintRefreshBar();
 	}
 
 	if (document.readyState === 'loading') {
