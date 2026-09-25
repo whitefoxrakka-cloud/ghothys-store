@@ -271,6 +271,9 @@ function corsHeaders(request, env) {
 		'Referrer-Policy': 'no-referrer'
 	};
 	if (allowOrigin) headers['Access-Control-Allow-Origin'] = allowOrigin;
+	/* Wajib ada kalau memakai cookie HttpOnly untuk login admin
+	   (request lintas origin dari GitHub Pages ke domain Worker). */
+	if (allowOrigin && allowOrigin !== '*') headers['Access-Control-Allow-Credentials'] = 'true';
 	return headers;
 }
 
@@ -287,12 +290,43 @@ function isOwnerAuthorized(request, env) {
    OWNER CONTENT (/content) - sekarang bisa juga pakai token panel admin
    supaya browser tidak perlu membawa secret sama sekali.
    ------------------------------------------------------------------ */
+function cookieAdmin(token, maxAgeSec) {
+	const parts = [
+		ADMIN_COOKIE_NAME + '=' + encodeURIComponent(token),
+		'Path=/',
+		'Max-Age=' + Math.max(0, Math.floor(maxAgeSec)),
+		'HttpOnly',
+		'Secure',
+		'SameSite=None'
+	];
+	return parts.join('; ');
+}
+
+function tokenDariCookie(request) {
+	const mentah = request.headers.get('Cookie') || '';
+	const bagian = mentah.split(';');
+	for (const b of bagian) {
+		const i = b.indexOf('=');
+		if (i === -1) continue;
+		if (b.slice(0, i).trim() !== ADMIN_COOKIE_NAME) continue;
+		try { return decodeURIComponent(b.slice(i + 1).trim()); } catch (e) { return ''; }
+	}
+	return '';
+}
+
+/* Login admin diterima lewat dua jalur yang SALING MELENGKAPI:
+   1. cookie HttpOnly di domain Worker (disimpan browser, tidak bisa
+      dibaca JavaScript, berlaku di semua tab sampai 8 jam)
+   2. header Authorization: Bearer (dipakai panel /admin/ supaya
+      tetap jalan walau cookie pihak ketiga diblokir browser)
+   Jadi halaman toko tidak perlu_token_ sama sekali, cukup login
+   sekali di panel. */
 async function isContentWriteAllowed(request, env) {
 	if (isOwnerAuthorized(request, env)) return true;
-	const auth = (request.headers.get('Authorization') || '').trim();
-	const token = auth.replace(/^Bearer\s+/i, '').trim();
-	if (!token || !env.JWT_SECRET) return false;
-	const payload = await verifyJwt(env.JWT_SECRET, token);
+	const bearer = (request.headers.get('Authorization') || '').trim().replace(/^Bearer\s+/i, '').trim();
+	const candidate = bearer || tokenDariCookie(request);
+	if (!candidate || !env.JWT_SECRET) return false;
+	const payload = await verifyJwt(env.JWT_SECRET, candidate);
 	return !!(payload && String(payload.role || '').toLowerCase() === 'admin');
 }
 
@@ -510,6 +544,8 @@ async function orderAlreadyExists(env, orderId) {
    ============================================================ */
 
 const ADMIN_STATUSES = ['Pending', 'Diproses', 'Success', 'Selesai', 'Cancel', 'Dibatalkan', 'Refund'];
+const ADMIN_COOKIE_NAME = 'ghothys_admin';
+const ADMIN_TOKEN_TTL_SEC = 8 * 3600;
 const loginAttempts = new Map();
 
 function jsonResponse(obj, status, headers) {
@@ -772,19 +808,27 @@ async function handleAdminRoute(request, env, url, headers) {
 		}
 		loginAttempts.delete(throttleKey);
 		const nowSec = Math.floor(Date.now() / 1000);
-		const token = await signJwt(env.JWT_SECRET, { sub: email, role: 'admin', iat: nowSec, exp: nowSec + (8 * 3600) });
-		return jsonResponse({ success: true, data: { token: token, user: { email: email, role: 'admin' } } }, 200, headers);
+		const token = await signJwt(env.JWT_SECRET, { sub: email, role: 'admin', iat: nowSec, exp: nowSec + ADMIN_TOKEN_TTL_SEC });
+		const h = Object.assign({}, headers);
+		h['Set-Cookie'] = cookieAdmin(token, ADMIN_TOKEN_TTL_SEC);
+		return jsonResponse({ success: true, data: { token: token, user: { email: email, role: 'admin' } } }, 200, h);
 	}
 
+	/* Panel /admin/ memakai header Bearer, halaman toko memakai cookie.
+	   Dua-duanya diterima supaya salah satu diblokir browser tidak
+	   membuat semuanya mati. */
 	const authHeader = (request.headers.get('Authorization') || '').trim();
-	const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+	const bearer = authHeader.replace(/^Bearer\s+/i, '').trim();
+	const token = bearer || tokenDariCookie(request);
 	const payload = await verifyJwt(env.JWT_SECRET, token);
 	if (!payload) {
 		return jsonResponse({ success: false, message: 'Sesi tidak valid atau sudah habis. Silakan login ulang.' }, 401, headers);
 	}
 
 	if (path === '/admin/logout' && (method === 'POST' || method === 'GET')) {
-		return jsonResponse({ success: true, data: { loggedOut: true } }, 200, headers);
+		const h = Object.assign({}, headers);
+		h['Set-Cookie'] = cookieAdmin('', 0);
+		return jsonResponse({ success: true, data: { loggedOut: true } }, 200, h);
 	}
 
 	if (path === '/admin/profile' && method === 'GET') {

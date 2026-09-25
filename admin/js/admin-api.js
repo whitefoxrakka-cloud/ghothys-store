@@ -35,6 +35,9 @@
     const fetchOptions = {
       ...options,
       headers,
+      // Kirim cookie login admin (HttpOnly di domain Worker) juga, supaya
+      // panel tetap jalan walau token sessionStorage tidak ada.
+      credentials: 'include',
     };
 
     const resp = await fetch(url, fetchOptions);

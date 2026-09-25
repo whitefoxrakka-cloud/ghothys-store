@@ -8,9 +8,11 @@
    ALUR:
    - Owner menyimpan data (js/owner.js -> saveOwnerData):
         window.syncOwnerContent(data) dipanggil -> POST {relayUrl}/content
-        dengan header "Authorization: Bearer <token admin>".
-        Token diambil dari sessionStorage admin_jwt, jadi owner perlu
-        login di panel /admin/ pada tab yang sama sebelum menyimpan.
+        dengan credentials:'include'. Login cukup SEKALI di panel
+        /admin/: Worker membalas Set-Cookie HttpOnly (ghothys_admin,
+        8 jam) di domain Worker sendiri, lalu browser mengirimkannya
+        otomatis untuk semua tab. Tidak ada token di file publik dan
+        halaman toko tidak perlu menyimpan apa pun.
         Non-blocking / fire-and-forget; gagal TIDAK mengganggu panel.
    - Pengunjung membuka toko:
        bridge ini membaca {relayUrl}/content (GET, publik, tanpa token).
@@ -21,18 +23,13 @@
 
    KONFIGURASI:
    Baca dari js/notify-config.js -> window.GHOTHYS_NOTIFY_CONFIG
-   (hanya relayUrl). Tidak ada secret di file publik anymore; token
-   admin disimpan di sessionStorage oleh admin/js/auth.js.
+   (hanya relayUrl). Tidak ada secret di file publik anymore.
    ============================================================ */
 
 (function(){
   var CONFIG = (window.GHOTHYS_NOTIFY_CONFIG) ? window.GHOTHYS_NOTIFY_CONFIG : {};
   var relayUrl = CONFIG.relayUrl || '';
   var lastPushWarned = false;
-
-  function adminToken(){
-    try { return sessionStorage.getItem('admin_jwt') || ''; } catch(e){ return ''; }
-  }
 
   function escapeHtml(s){
     if(!s) return '';
@@ -51,16 +48,11 @@
      ------------------------------------------------------------ */
   window.syncOwnerContent = function(data){
     if(!relayUrl || !/^https:\/\//.test(relayUrl)) return { ok: true, skipped: true };
-    var token = adminToken();
-    if(!token){
-      if(!lastPushWarned){
-        lastPushWarned = true;
-        var pesan = 'Konten tersimpan di browser ini saja, BELUM ke server. Buka /admin/ pada tab ini, login, lalu klik Simpan lagi.';
-        console.warn('[content-bridge] ' + pesan);
-        if(typeof window.showErrorToast === 'function') window.showErrorToast('Konten belum ke server', pesan);
-      }
-      return { ok: false, skipped: true, reason: 'admin login required' };
-    }
+
+    /* Tidak ada token di file publik, dan halaman toko tidak perlu
+       menyimpan apa pun. Login cukup sekali di panel /admin/: Worker
+       memberi cookie HttpOnly di domainnya sendiri, lalu browser
+       mengirimkannya otomatis untuk semua tab. */
     var payload = {
       announcements: (data && data.announcements) || [],
       events: (data && data.events) || [],
@@ -71,16 +63,21 @@
     var url = relayUrl.replace(/\/+$/,'') + '/content';
     fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
-      },
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     }).then(function(res){
       return res.json().catch(function(){ return {}; }).then(function(j){
         return { ok: res.ok, status: res.status, json: j };
       });
     }).then(function(r){
+      var perluLogin = (r.status === 401 || r.status === 403);
+      window.__ghothysSyncState = {
+        status: r.ok ? 'ok' : (perluLogin ? 'perlu-login' : 'gagal'),
+        message: r.ok ? 'Tersimpan di server' : ((r.json && r.json.error) || ('HTTP ' + r.status)),
+        at: Date.now()
+      };
+      document.dispatchEvent(new CustomEvent('ghothys-sync', { detail: window.__ghothysSyncState }));
       if(r.ok){
         lastPushWarned = false;
         if(typeof window.showToast === 'function'){
@@ -98,10 +95,14 @@
         lastPushWarned = true;
         console.warn('[content-bridge] Relay /content POST gagal', r.status, r.json);
         if(typeof window.showErrorToast === 'function'){
-          window.showErrorToast('Gagal kirim ke server', 'Konten hanya ada di browser ini. Coba ' + (r.status === 401 || r.status === 403 ? 'login ulang di /admin/ pada tab ini' : 'lagi beberapa saat lagi') + '.');
+          window.showErrorToast('Konten belum ke server', perluLogin
+            ? 'Login dulu di panel /admin/ (sekali saja, berlaku di semua tab), lalu Simpan lagi.'
+            : 'Konten hanya ada di browser ini. Coba lagi beberapa saat lagi.');
         }
       }
     }).catch(function(e){
+      window.__ghothysSyncState = { status: 'gagal', message: (e && e.message) || 'network error', at: Date.now() };
+      document.dispatchEvent(new CustomEvent('ghothys-sync', { detail: window.__ghothysSyncState }));
       if(!lastPushWarned){
         lastPushWarned = true;
         console.warn('[content-bridge] Relay /content POST error', e && e.message);
@@ -111,6 +112,16 @@
       }
     });
     return { ok: true, sent: true };
+  };
+
+  /* Login sekali di panel /admin/ (atau lewat form di panel owner) lalu
+     otomatis kirim ulang konten yang tadi gagal. */
+  window.retryOwnerContentSync = function(){
+    if(typeof window.getOwnerData === 'function'){
+      window.syncOwnerContent(window.getOwnerData());
+    } else {
+      window.__ghothysSyncState = { status: 'gagal', message: 'data owner tidak terbaca', at: Date.now() };
+    }
   };
 
   /* ------------------------------------------------------------

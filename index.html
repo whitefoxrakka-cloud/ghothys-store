@@ -5583,8 +5583,33 @@
                <div id="owner-latest-event" class="text-lg">—</div>
             </div>
         
-            <!-- Announcement Manager (Phase 2) -->
-            <div id="owner-announcements-section" style="display:none;" class="mt-6">
+              <!-- Sinkronisasi Konten ke Server (butuh login sekali) -->
+              <div id="owner-sync-section" class="mt-6">
+                 <div class="rounded-lg p-4" style="background:var(--bg-primary);">
+                    <div class="flex items-center justify-between gap-3 flex-wrap">
+                       <h3 class="font-semibold">Sinkronisasi Konten ke Server</h3>
+                       <button id="owner-sync-retry" type="button" class="px-3 py-1 rounded text-sm font-semibold text-white" style="background:#4f46e5;display:none;">Kirim ulang sekarang</button>
+                    </div>
+                    <p id="owner-sync-status" class="text-sm mt-2" style="color:#9ca3af;">Memeriksa status sinkronisasi...</p>
+                    <div id="owner-sync-login" style="display:none;" class="mt-3">
+                       <p class="text-xs mb-2" style="color:var(--text-secondary);">Login sekali di sini. Berlaku di semua tab sampai 8 jam, lalu setiap klik Simpan langsung masuk server tanpa langkah tambahan.</p>
+                       <form id="owner-sync-form" class="flex flex-col gap-2 md:flex-row md:items-end">
+                          <div class="flex-1">
+                             <label class="text-xs" for="owner-sync-email">Email admin</label>
+                             <input id="owner-sync-email" type="email" autocomplete="username" class="w-full p-2 rounded" style="background:var(--bg-card);color:var(--text-primary);" required />
+                          </div>
+                          <div class="flex-1">
+                             <label class="text-xs" for="owner-sync-password">Password</label>
+                             <input id="owner-sync-password" type="password" autocomplete="current-password" class="w-full p-2 rounded" style="background:var(--bg-card);color:var(--text-primary);" required />
+                          </div>
+                          <button id="owner-sync-login-btn" type="submit" class="px-4 py-2 rounded text-white font-semibold" style="background:#4f46e5;">Login &amp; Simpan Otomatis</button>
+                       </form>
+                    </div>
+                 </div>
+              </div>
+
+              <!-- Announcement Manager (Phase 2) -->
+              <div id="owner-announcements-section" style="display:none;" class="mt-6">
                <div class="rounded-lg p-4 mb-4" style="background:var(--bg-primary);">
                   <h3 class="font-semibold mb-2">Create Announcement</h3>
                   <form id="owner-announcement-form">
@@ -5703,6 +5728,7 @@
 <script src="js/topup.js?v=20260925c"></script>
 <script src="js/owner.js?v=20260925c"></script>
 				<script src="js/content-bridge.js?v=20260925c"></script>
+   <script src="js/owner-sync.js?v=20260925c"></script>
 				<script src="js/order-status.js?v=20260925c"></script>
 				<script src="js/app.js?v=20260925c"></script>
  <!-- Removed iframe/CLOUDFLARE challenge injection to prevent 404 and MIME errors -->
