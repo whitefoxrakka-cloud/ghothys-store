@@ -5,6 +5,8 @@
    - Menyembunyikan Discord webhook & token Telegram dari repo.
    - Hanya meneruskan payload yang bentuknya ORDER.
    - Menyimpan order ke Airtable (database order-an owner).
+   - Menyimpan konten owner (pengumuman/event/banner) ke Airtable
+     dan membacanya kembali untuk semua pengunjung (fitur #2).
 
    Deploy:
    1) Buka https://dash.cloudflare.com -> Workers & Pages
@@ -18,7 +20,13 @@
         AIRTABLE_PAT         = <Personal Access Token Airtable>
         AIRTABLE_BASE_ID     = <ID base, mis. appXLcZqRnd9Lx7Xe>
         AIRTABLE_TABLE_NAME  = <nama tabel, mis. Orders>
+        AIRTABLE_CONTENT_TABLE_NAME = <nama tabel konten, mis. Content>
    4) Save and deploy.
+
+   TABEL AIRTABLE "Content" (buat sekali, impor file
+   relay/airtable-content-template.csv):
+     ORDER_ID (text)  |  PAYLOAD (long text / JSON)  |  UPDATED_AT (datetime)
+   Gunakan ORDER_ID 'content_owner_1' sebagai baris konten tunggal.
    ============================================================ */
 
 async function sendToDiscord(webhookUrl, text) {
@@ -42,6 +50,125 @@ async function sendToTelegram(token, chatId, text) {
 	const body = await res.json();
 	if (!res.ok || !body.ok) throw new Error('Telegram: ' + (body.description || ('HTTP ' + res.status)));
 	return { ok: true, channel: 'telegram' };
+}
+
+/* ============================================================
+   KONTEN OWNER -> PUBLIK (fitur #2)
+   ------------------------------------------------------------
+   Konten owner (pengumuman/event/banner/pinned) disimpan sebagai
+   SATU baris JSON di tabel Airtable "Content" dengan ORDER ID =
+   'content_owner_1'. Semua pengunjung membaca baris ini lewat
+   GET /content; owner menulisnya lewat POST /content (dengan
+   X-Ghothys-Secret).
+
+   Tabel Airtable "Content" (buat SEKALI lewat impor
+   relay/airtable-content-template.csv):
+     ORDER_ID (text) | PAYLOAD (long text) | UPDATED_AT (datetime)
+   ============================================================ */
+
+async function getContentFromAirtable(env) {
+	if (!env.AIRTABLE_PAT || !env.AIRTABLE_BASE_ID || !env.AIRTABLE_CONTENT_TABLE_NAME) {
+		return { ok: true, skipped: true, content: null };
+	}
+	const url = 'https://api.airtable.com/v0/' + env.AIRTABLE_BASE_ID + '/' +
+		encodeURIComponent(env.AIRTABLE_CONTENT_TABLE_NAME) +
+		'?filterByFormula=' + encodeURIComponent("ORDER_ID='content_owner_1'") +
+		'&maxRecords=1';
+	const res = await fetch(url, {
+		headers: { 'Authorization': 'Bearer ' + env.AIRTABLE_PAT }
+	});
+	if (!res.ok) throw new Error('Airtable GET content HTTP ' + res.status);
+	const body = await res.json();
+	const rec = body.records && body.records[0];
+	if (!rec || !rec.fields || !rec.fields.PAYLOAD) return { ok: true, content: null };
+	let content = null;
+	try { content = JSON.parse(rec.fields.PAYLOAD); } catch (e) { content = null; }
+	return { ok: true, content: content, updatedAt: rec.fields.UPDATED_AT || null };
+}
+
+/* ============================================================
+   HELPER: BACA STATUS ORDER DARI AIRTABLE (fitur #3)
+   ------------------------------------------------------------
+   Mencari satu order di tabel Airtable "Orders" — env
+   AIRTABLE_TABLE_NAME (nama tabel default). Field yang dipakai
+   adalah yang DITULIS saveToAirtable() saat order dibuat:
+     'Order ID' (mis. 'INV-26072026-001'),
+     'Game', 'UID', 'Server', 'Item', 'Price', 'Payment',
+     'Customer', 'Time', 'Status' ('Pending' saat dibuat).
+
+   Endpoint /order-status hanya mengembalikan field aman untuk
+   publik (tanpa Customer/Phone): Order ID, Game, UID, Item,
+   Price, Payment, Status, Time. Data sensitif customer TIDAK
+   pernah ikut terkirim.
+   ============================================================ */
+async function getOrderStatusFromAirtable(env, orderId) {
+	if (!env.AIRTABLE_PAT || !env.AIRTABLE_BASE_ID || !env.AIRTABLE_TABLE_NAME) {
+		return { ok: true, skipped: true, order: null };
+	}
+	if (!/^INV-\d{8}-\d+$/.test(orderId)) {
+		return { ok: false, error: 'Format Order ID tidak valid' };
+	}
+	const url = 'https://api.airtable.com/v0/' + env.AIRTABLE_BASE_ID + '/' +
+		encodeURIComponent(env.AIRTABLE_TABLE_NAME) +
+		'?filterByFormula=' + encodeURIComponent("{Order ID}='" + orderId + "'") +
+		'&maxRecords=1';
+	const res = await fetch(url, {
+		headers: { 'Authorization': 'Bearer ' + env.AIRTABLE_PAT }
+	});
+	if (!res.ok) throw new Error('Airtable get order HTTP ' + res.status);
+	const body = await res.json();
+	const rec = body.records && body.records[0];
+	if (!rec || !rec.fields) return { ok: true, found: false, order: null };
+	const f = rec.fields;
+	return {
+		ok: true,
+		found: true,
+		order: {
+			orderId: f['Order ID'] || orderId,
+			game: f.Game || '-',
+			uid: f.UID || '-',
+			server: f.Server || '-',
+			item: f.Item || '-',
+			price: f.Price || 0,
+			payment: f.Payment || '-',
+			status: f.Status || 'Pending',
+			time: f.Time || null
+		}
+	};
+}
+
+async function saveContentToAirtable(env, content) {
+	if (!env.AIRTABLE_PAT || !env.AIRTABLE_BASE_ID || !env.AIRTABLE_CONTENT_TABLE_NAME) {
+		return { ok: true, skipped: true };
+	}
+	if (!content || typeof content !== 'object') throw new Error('Content must be an object');
+	const fields = {
+		'ORDER_ID': 'content_owner_1',
+		'PAYLOAD': JSON.stringify(content),
+		'UPDATED_AT': new Date().toISOString()
+	};
+	const url = 'https://api.airtable.com/v0/' + env.AIRTABLE_BASE_ID + '/' +
+		encodeURIComponent(env.AIRTABLE_CONTENT_TABLE_NAME) +
+		'?filterByFormula=' + encodeURIComponent("ORDER_ID='content_owner_1'");
+	const listRes = await fetch(url, {
+		headers: { 'Authorization': 'Bearer ' + env.AIRTABLE_PAT }
+	});
+	if (!listRes.ok) throw new Error('Airtable find content HTTP ' + listRes.status);
+	const listBody = await listRes.json();
+	const existing = listBody.records && listBody.records[0];
+
+	const saveUrl = 'https://api.airtable.com/v0/' + env.AIRTABLE_BASE_ID + '/' +
+		encodeURIComponent(env.AIRTABLE_CONTENT_TABLE_NAME) + (existing ? ('/' + existing.id) : '');
+	const res = await fetch(saveUrl, {
+		method: existing ? 'PATCH' : 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'Authorization': 'Bearer ' + env.AIRTABLE_PAT
+		},
+		body: JSON.stringify({ fields: fields })
+	});
+	if (!res.ok) throw new Error('Airtable save content HTTP ' + res.status);
+	return { ok: true, method: existing ? 'update' : 'create' };
 }
 
 async function saveToAirtable(env, p) {
@@ -120,9 +247,69 @@ export default {
 		};
 		if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
 
-		if (request.method !== 'POST') {
+        /* ============================================================
+           ENDPOINT KONTEN OWNER (fitur #2 - Owner -> Publik)
+           ------------------------------------------------------------
+           - GET  /content  -> publik, tanpa secret. Membaca konten
+             owner (pengumuman/event/banner/pinned) dari tabel
+             Airtable "Content" dan mengembalikannya sebagai JSON.
+           - POST /content  -> owner, WAJIB X-Ghothys-Secret.
+             Menyimpan/memperbarui konten owner ke tabel "Content"
+             (satu baris tunggal, ORDER_ID='content_owner_1').
+
+           Tabel Airtable "Content" (buat sekali via impor
+           relay/airtable-content-template.csv):
+             ORDER_ID (text)  |  PAYLOAD (long text/JSON)  |  UPDATED_AT (datetime)
+        ============================================================ */
+
+		if (request.method === 'GET' && new URL(request.url).pathname === '/content') {
+			const contentJson = await getContentFromAirtable(env);
+			return new Response(JSON.stringify(contentJson), {
+				status: contentJson.ok ? 200 : 500,
+				headers
+			});
+		}
+
+		/* ============================================================
+		   ENDPOINT CEK STATUS ORDER (fitur #3 - Customer -> Status)
+		   ------------------------------------------------------------
+		   - GET /order-status?order_id=INV-XXXXX  -> PUBLIK, tanpa
+		     secret. Customer memasukkan Order ID miliknya untuk
+		     melihat status pesanan (Pending/Diproses/Selesai/
+		     Dibatalkan/Refund). Status dibaca dari tabel Airtable
+		     "Orders" (kolom Status yang ditulis saat order dibuat,
+		     di-update owner di Airtable/panel owner).
+		   ============================================================ */
+		if (request.method === 'GET' && new URL(request.url).pathname === '/order-status') {
+			try {
+				const orderId = (new URL(request.url).searchParams.get('order_id') || '').trim();
+				const result = await getOrderStatusFromAirtable(env, orderId);
+				return new Response(JSON.stringify(result), {
+					status: result.ok ? 200 : 404,
+					headers
+				});
+			} catch (e) {
+				return new Response(JSON.stringify({ ok: false, error: e.message }), { status: 500, headers });
+			}
+		}
+
+        if (request.method !== 'POST') {
 			return new Response(JSON.stringify({ ok: false, error: 'Method not allowed' }), { status: 405, headers });
 		}
+
+        if (request.url.includes('/content')) {
+            const authorized = env.SECRET && request.headers.get('X-Ghothys-Secret') === env.SECRET;
+            if (!authorized) {
+                return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 403, headers });
+            }
+            try {
+                const bodyJson = await request.json();
+                const result = await saveContentToAirtable(env, bodyJson);
+                return new Response(JSON.stringify({ ok: true, ...result }), { status: 200, headers });
+            } catch (e) {
+                return new Response(JSON.stringify({ ok: false, error: e.message }), { status: 500, headers });
+            }
+        }
 
 		if (env.SECRET && request.headers.get('X-Ghothys-Secret') !== env.SECRET) {
 			return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 403, headers });

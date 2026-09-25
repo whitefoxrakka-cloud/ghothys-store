@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="id">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="robots" content="noindex, nofollow" />
+	<title>Admin · Ghothys Store</title>
+	<link rel="icon" type="image/png" href="../img/logo.png" />
+	<script>
+		/* index.html untuk folder /admin/ — GitHub Pages butuh file ini
+		   supaya URL direktori (…/admin/) tidak 404.
+		   Redirect pintar:
+		     - sudah login (sessionStorage 'admin_jwt' terisi)  -> dashboard.html
+		     - belum login                                      -> login.html
+		   Dipakai oleh frontend lama (js/notify-config.js / auth.js)
+		   dan konsisten dengan guard auth di dashboard.html. */
+		(function () {
+			var token = '';
+			try {
+				token = window.sessionStorage.getItem('admin_jwt') || '';
+			} catch (e) {
+				token = '';
+			}
+			var target = token ? './dashboard.html' : './login.html';
+			window.location.replace(target);
+		})();
+	</script>
+	<noscript>
+		<meta http-equiv="refresh" content="0; url=./login.html" />
+	</noscript>
+</head>
+<body>
+	<p>Mengalihkan ke <a href="./login.html">halaman login admin</a>…</p>
+</body>
+</html>

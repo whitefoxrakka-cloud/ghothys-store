@@ -52,6 +52,8 @@
   /* Announcement Manager (Phase 2) */
   function saveOwnerData(data){
     localStorage.setItem(window.STORAGE_KEYS.OWNER_PANEL, JSON.stringify(data));
+    /* Fitur #2: sinkronkan konten owner ke relay (best-effort, tidak blokir). */
+    if(window.syncOwnerContent) window.syncOwnerContent(data);
   }
 
   window.openAnnouncementManager = function(){
