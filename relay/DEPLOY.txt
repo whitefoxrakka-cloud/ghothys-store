@@ -69,11 +69,11 @@ ANTI-SPAM ORDER (sudah aktif, versi 2026-09-25)
   CATATAN: ini menahan spam/bot, bukan otentikasi. Kalau butuh proteksi
   lebih ketat (mis. wajib login/OTP), itu perubahan terpisah.
 
-  DATA YANG PERLU DIRAPIKAN MANUAL DI AIRTABLE (salah ketik karena bug
-  harga versi lama, tidak bisa dihapus dari sisi Worker):
-     INV-20260925-0001  price 25.5   -> seharusnya 25500
-     INV-20260925-0004  price 10     -> seharusnya 10000
-     INV-20260925-7101  order uji     -> boleh dihapus
+  DATA AIRTABLE SUDAH DIRAPIKAN (25/09/2026, lewat endpoint sementara
+  /admin/fix-data yang sudah dihapus lagi):
+     INV-20260925-0001  price 25.5 -> 25500
+     INV-20260925-0004  price 10   -> 10000
+     INV-20260925-7101  order uji  -> dihapus
 
   PENTING: relaySecret di js/notify-config.js SUDAH DIKOSONGKAN dan
   secret lama sudah dirotasi. Jangan pernah menaruh secret di file publik
@@ -97,21 +97,42 @@ ENDPOINT PANEL ADMIN (butuh header "Authorization: Bearer <token>", 8 jam)
   admin/order-detail.html (butuh ../js/notify-config.js untuk dapat relayUrl).
 
 ROTASI PASSWORD ADMIN
-  Password owner TIDAK disimpan di repo. Sumber nilai saat ini:
-  backend/scripts/seed-admin.js (MASIH plaintext di repo - Ideally dihapus setelah
-  worker siap, lalu pakai langkah di bawah).
+  25/09/2026 password admin sudah dirotasi karena sebelumnya ada plaintext
+  di backend/scripts/seed-admin.js. File itu sekarang membaca password dari
+  environment variable ADMIN_PASSWORD dan tidak bisa jalan tanpa itu.
+  Kabar baik: folder backend/ TIDAK pernah masuk repository GitHub
+  (sudah dicek dengan git log -S, tidak ada jejaknya), jadi password lama
+  tidak bocor lewat riwayat commit. Repo ini hanya berisi file statis
+  GitHub Pages. Tetap verdict lama tidak dipakai lagi di mana pun.
 
-  1. Buat hash baru (Node, PBKDF2-SHA256 60.000 iterasi, salt 16 byte, hash 32 byte):
-       node -e "const c=require('crypto'),fs=require('fs');\
-       const p=fs.readFileSync('D:/Proyek & Karya/toko baru/backend/scripts/seed-admin.js','utf8')\
-       .match(/TARGET_ADMIN_PASSWORD\s*=\s*'([^']+)'/)[1];\
-       const s=c.randomBytes(16),h=c.pbkdf2Sync(Buffer.from(p),s,60000,32,'sha256');\
+  Cara rotasi (jangan print password ke terminal/chat):
+   1. Buat password + hash di file temp, bukan di layar:
+      node -e "const c=require('crypto'),fs=require('fs');\
+       const set='abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%';\
+       const pw=Array.from(c.randomBytes(22)).map(b=>set[b%set.length]).join('');\
+       const s=c.randomBytes(16),h=c.pbkdf2Sync(Buffer.from(pw),s,60000,32,'sha256');\
        const b=x=>x.toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');\
-       process.stdout.write('pbkdf2$60000$'+b(s)+'$'+b(h))" | npx wrangler secret put ADMIN_PASSWORD_HASH
-  2. Ubah TARGET_ADMIN_PASSWORD di seed-admin.js (kalau passwordnya memang diganti).
-  3. Kalau mengganti email admin juga: pakai perintah yang sama untuk ADMIN_EMAIL.
+       fs.writeFileSync(process.env.TEMP+'/hash.txt','pbkdf2$60000$'+b(s)+'$'+b(h));\
+       fs.writeFileSync(process.env.TEMP+'/pw.txt',pw);"
+   2. Pasang hash (JALANKAN DARI FOLDER relay/):
+        npx wrangler secret bulk <file-json-berisi>{"ADMIN_PASSWORD_HASH":"..."}
+      Catatan: di Windows "npx wrangler secret put X" lewat pipe stdin bisa
+      crash (Assertion failed UV_HANDLE_CLOSING) dan diam-diam tidak memasang
+      apa pun. Pakai "secret bulk" dengan file JSON, lalu WAJIB tes login.
+   3. Tes: password baru -> 200, password lama -> 401.
+   4. Salin password baru ke clipboard untuk owner (Get-Content pw.txt |
+      Set-Clipboard), jangan dicetak di chat.
+   5. Kalau mengganti email admin juga: hash/plain lewat "secret bulk" dengan
+      key ADMIN_EMAIL.
   PENTING: Cloudflare membatasi iterasi PBKDF2 maksimal 100.000. Di atas itu
   verifyPassword selalu gagal (login selalu 401) walau hash-nya benar.
+
+CACHE-BUSTING FILE PUBLIK
+  Semua <script src> dan <link href> lokal di index.html dan admin/*.html
+  diberi ?v=20260925b. Kalau kamu mengubah file publik, naikkan versinya
+  (misal 20260925c) di semua tag supaya browser tidak memakai file lama.
+  Berlaku juga untuk data/games.js dan css/*.
+ _edit: file worker.js tidak memakai mekanisme ini (deploy sendiri).
 
 ATURAN WAJIB
   1. Selalu deploy dengan --keep-vars.
