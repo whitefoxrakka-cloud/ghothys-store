@@ -44,9 +44,8 @@
     terakhirDicek = Date.now();
     if(sedangCek) return;
     sedangCek = true;
-    fetch(relayUrl + '/admin/profile', { method: 'GET', credentials: 'include' })
+    fetch(relayUrl + '/admin/session', { method: 'GET', credentials: 'include' })
       .then(function(res){
-        if(res.status === 401 || res.status === 403) return { login: false };
         if(!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
       })
