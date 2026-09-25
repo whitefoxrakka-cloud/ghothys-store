@@ -84,11 +84,11 @@ ANTI-SPAM ORDER (sudah aktif, versi 2026-09-25)
      INV-20260925-0004  price 10   -> 10000
      INV-20260925-7101  order uji  -> dihapus
 
-   PENTING: relaySecret di js/notify-config.js SUDAH DIKOSONGKAN dan
-   secret lama sudah dirotasi. Jangan pernah menaruh secret di file publik
-   (view source bisa dilihat siapa pun). Untuk tulis konten owner, browser
-   memakai token panel admin (sessionStorage admin_jwt) -> wajib login di
-   /admin/ pada tab yang sama.
+    PENTING: relaySecret di js/notify-config.js SUDAH DIKOSONGKAN dan
+    secret lama sudah dirotasi. Jangan pernah menaruh secret di file publik
+    (view source bisa dilihat siapa pun). Untuk tulis konten owner, browser
+    memakai cookie admin ghothys_admin (HttpOnly) yang didapat dari satu
+    kali login di panel owner - lihat bagian KONTEN OWNER.
 
 KONTEN OWNER (pengumuman / event / banner)
   Isi konten owner disimpan di DUA tempat:
@@ -108,22 +108,44 @@ KONTEN OWNER (pengumuman / event / banner)
       toast kalau gagal terkirim, termasuk bila belum login di /admin/
       pada tab itu. Dulu gagal diam-diam.
 
-  CARA MEMULIHKAN (butuh kamu, karena isinya data kamu):
+  CARA MENYIMPAN (dipakai sehari-hari)
+    1. Buka https://<nama-toko>.github.io/ lalu masuk ke panel owner.
+       Kotak "Sinkronisasi Konten ke Server" di atas menunjukkan status
+       dengan warna:
+         hijau  = tersimpan di server, semua tab aman
+         oranye = belum login, konten hanya di browser ini
+         merah  = gagal kirim, ada tombol "Kirim ulang sekarang"
+    2. Kalau oranye, isi email + password admin di kotak itu, klik
+       "Login & Simpan Otomatis". Sekali saja.
+    3. Setelah hijau, setiap klik Simpan langsung masuk server tanpa
+       langkah tambahan, berlaku di semua tab/peramban sampai 8 jam.
+
+  CARA KERJA LOGINNYA
+    Login menulis cookie ghothys_admin (HttpOnly, Secure, SameSite=None)
+    di domain worker. Cookie tidak bisa dibaca JavaScript jadi aman dari
+    pencurian lewat XSS. Halaman toko memakai cookie itu lewat
+    fetch(credentials:"include"); panel /admin/ tetap memakai header
+    Bearer dari sessionStorage seperti sebelumnya. Server menerima
+    keduanya, jadi salah satu diblokir peramban tidak mematikan semua.
+    Kalau peramban memblokir cookie pihak ketiga, kotak login muncul
+    lagi - tidak merusak data.
+
+  CARA MEMULIHKAN (butuh kamu, karena isinya data kamu)
     1. Buka situs di browser yang biasa kamu pakai untuk edit konten
        (browser dengan localStorage yang masih ada isinya).
        Kalau localStorage sudah kosong, isi tidak bisa dipulihkan -
        harus diketik ulang dari panel owner.
-    2. Di tab YANG SAMA, buka /admin/login.html lalu login pakai
-       password admin terbaru. Ini mengisi sessionStorage admin_jwt
-       yang dibaca content-bridge.
-    3. Balik ke index.html, buka panel owner, cek isi
-       pengumuman/event/banner, lalu klik Simpan.
+    2. Di panel owner, login sekali lewat kotak Sinkronisasi Konten
+       (tidak perlu pindah tab, tidak perlu /admin/login.html lagi).
+    3. Cek isi pengumuman/event/banner, lalu klik Simpan.
     4. Toast hijau "Konten tersimpan" = berhasil. Verifikasi:
        buka https://<worker>.workers.dev/content
        isi announcements/events/banners harus muncul.
     5. Kalau toast merah "Server menolak" dengan 409, berarti kamu
        sengaja menghapus semua - klik Simpan lagi setelah memastikan.
 
+  25/09/2026 syarat "harus login di /admin/ pada tab yang sama" sudah
+  DIHAPUS. Sekarang cukup login sekali lewat kotak Sinkronisasi Konten.
 
 ENDPOINT PANEL ADMIN (butuh header "Authorization: Bearer <token>", 8 jam)
   POST   /admin/login                { email, password } -> { data: { token, user } }
