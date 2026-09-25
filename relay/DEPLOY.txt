@@ -53,12 +53,27 @@ ANTI-SPAM ORDER (sudah aktif, versi 2026-09-25)
      t kosong/0 tetap diterima agar halaman lama di cache tidak rusak.
   4. Rate limit 5 order / 10 menit / IP (balas 429 + Retry-After).
      Klien otomatis coba lagi sekali setelah jeda 3,2 detik.
+     CATATAN PENTING: ini memakai Map di memori isolate, jadi sifatnya
+    -best effort - Cloudflare bisa menjalankan request paralel di isolate
+     berbeda sehingga hitungannya tidak selalu konsisten (terbukti: 10
+     request paralel -> 1 balasan 429, sisanya 200). Jadi rate limit ini
+     memperlambat spam naif, bukan jaminan keras. Untuk jaminan keras:
+     aturan rate limiting di dashboard Cloudflare (WAF) atau Durable Object.
+     Login admin (/admin/login) punya limiter dengan catatan yang sama.
   5. Cek duplikat Order ID di Airtable (balas 200 duplicate, tidak kirim
      ulang ke Discord/Telegram).
   6. Validasi ketat: order_id /^INV-\d{8}-\d{1,6}$/, game & uid wajib,
-     price 0-5.000.000, panjang tiap field dibatasi.
+     price 1-5.000.000, panjang tiap field dibatasi.
+  7. Harga dinormalisasi: "Rp 10.000" (kiriman versi lama) dibaca 10000,
+     bukan 10. Tanpa ini kolom Price di Airtable korup.
   CATATAN: ini menahan spam/bot, bukan otentikasi. Kalau butuh proteksi
   lebih ketat (mis. wajib login/OTP), itu perubahan terpisah.
+
+  DATA YANG PERLU DIRAPIKAN MANUAL DI AIRTABLE (salah ketik karena bug
+  harga versi lama, tidak bisa dihapus dari sisi Worker):
+     INV-20260925-0001  price 25.5   -> seharusnya 25500
+     INV-20260925-0004  price 10     -> seharusnya 10000
+     INV-20260925-7101  order uji     -> boleh dihapus
 
   PENTING: relaySecret di js/notify-config.js SUDAH DIKOSONGKAN dan
   secret lama sudah dirotasi. Jangan pernah menaruh secret di file publik
@@ -113,9 +128,10 @@ ATURAN WAJIB
      (nilai lama langsung mati), kosongkan dari file, lalu commit + deploy.
 
 VERSI WORKER
+  2026-09-25  3aefa092 Perbaikan parsing harga (Rp 10.000 tidak jadi 10) - AKTIF
+  2026-09-25  bf7dc2cd Rotasi SECRET + wajibnya header Sec-Fetch-*
   2026-09-25  4b4ddae6 anti-spam order (honeypot, dwell, rate limit, dedupe)
   2026-09-25  812abb3d perbaikan cek dwell time (t=0 tidak ditolak)
-  2026-09-25  bf7dc2cd Rotasi SECRET + wajibnya header Sec-Fetch-* (versi aktif)
 
 ROLLBACK
   npx wrangler rollback <version-id-sebelumnya>

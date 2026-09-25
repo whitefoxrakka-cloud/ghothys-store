@@ -344,6 +344,19 @@ function looksLikeBrowserFetch(request, env) {
 	return true;
 }
 
+/* Harga bisa datang sebagai angka (versi baru) atau teks "Rp 10.000"
+   (versi lama yang masih tersimpan di cache browser). Pemisah ribuan
+   Indonesia adalah titik, jadi SEMUA titik dan koma dibuang dulu;
+   tanpa ini "Rp 10.000" terbaca jadi 10 dan data Airtable korup. */
+function parseRupiah(value) {
+	if (typeof value === 'number') return isFinite(value) ? value : NaN;
+	let s = String(value == null ? '' : value).toLowerCase().replace(/rp|idr/g, '').replace(/\s/g, '');
+	if (!/^[0-9.,]+$/.test(s)) return NaN;
+	s = s.replace(/[.,]/g, '');
+	const n = Number(s);
+	return isFinite(n) ? n : NaN;
+}
+
 function checkOrderPayload(p) {
 	if (!p || typeof p !== 'object') return { ok: false, error: 'Payload bukan objek' };
 	const honeypot = String((p.hp !== undefined ? p.hp : p.website) || '').trim();
@@ -370,8 +383,8 @@ function checkOrderPayload(p) {
 	};
 	if (!text(p.game, 60)) return { ok: false, error: 'Field game wajib diisi' };
 	if (!text(p.uid, 40)) return { ok: false, error: 'Field UID wajib diisi' };
-	const priceNum = Number(String(p.price || '').replace(/[^0-9.]/g, ''));
-	if (!isFinite(priceNum) || priceNum < 0 || priceNum > 5000000) return { ok: false, error: 'Nominal tidak valid' };
+	const priceNum = parseRupiah(p.price);
+	if (!isFinite(priceNum) || priceNum <= 0 || priceNum > 5000000) return { ok: false, error: 'Nominal tidak valid' };
 	return {
 		ok: true,
 		order: {
