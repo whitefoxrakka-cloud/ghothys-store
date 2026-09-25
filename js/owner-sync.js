@@ -7,12 +7,15 @@
    CARA KERJA:
    - Semua request memakai credentials:'include', jadi Worker
      mengirim cookie login HttpOnly (ghothys_admin) secara otomatis.
-   - Status dicek dengan GET /admin/profile (butuh cookie valid).
+   - Status dicek dengan GET /admin/session (butuh cookie valid).
    - Kalau belum login, panel menampilkan form email + password.
      Setelah berhasil, konten yang tadi gagal langsung dikirim ulang
      tanpa owner harus 저장 ulang.
    - Tidak ada token yang disimpan di localStorage/sessionStorage,
      dan tidak ada password yang disimpan di mana pun.
+   - Saat belum login admin, tombol simpan di panel (Announcement/
+     Event/Banner) diblokir dengan pesan jelas, supaya owner tidak
+     kira-kira konten sudah masuk server.
    ============================================================ */
 
 (function(){
@@ -52,15 +55,18 @@
       .then(function(j){
         sedangCek = false;
         if(j && j.success && j.data){
+          window.__ghothysOwnerAuthed = true;
           setStatus('Tersambung sebagai ' + j.data.email + ' - konten otomatis masuk server.', '#34d399');
           tampilkanLogin(false);
           return;
         }
+        window.__ghothysOwnerAuthed = false;
         setStatus('Belum login - konten hanya tersimpan di browser ini.', '#fbbf24');
         tampilkanLogin(true);
       })
       .catch(function(e){
         sedangCek = false;
+        window.__ghothysOwnerAuthed = false;
         setStatus('Tidak bisa menghubungi server: ' + ((e && e.message) || 'error'), '#f87171');
       });
   }
@@ -100,6 +106,7 @@
         return;
       }
       if(el('owner-sync-password')) el('owner-sync-password').value = '';
+      window.__ghothysOwnerAuthed = true;
       setStatus('Berhasil. Mengirim konten ke server...', '#34d399');
       tampilkanLogin(false);
       if(typeof window.showToast === 'function'){
@@ -129,12 +136,36 @@
         setStatus('Konten tersimpan di server.', '#34d399');
         tampilkanLogin(false);
       } else if(s.status === 'perlu-login'){
+        window.__ghothysOwnerAuthed = false;
         setStatus('Login dulu supaya konten bisa masuk server (sekali saja, berlaku di semua tab).', '#fbbf24');
         tampilkanLogin(true);
       } else {
         setStatus('Gagal: ' + (s.message || 'tidak diketahui'), '#f87171');
       }
     });
+
+    /* Blokir tombol simpan panel owner saat belum login admin.
+       Capture phase supaya jalan sebelum handler submit form. */
+    var modal = el('owner-panel-modal');
+    if(modal && !modal.dataset.saveGuard){
+      modal.dataset.saveGuard = '1';
+      modal.addEventListener('click', function(ev){
+        if(window.__ghothysOwnerAuthed === true) return;
+        var t = ev.target;
+        if(!(t instanceof HTMLElement)) return;
+        var formEl = t.closest('#owner-announcement-form, #owner-event-form');
+        if(formEl && (t.tagName === 'BUTTON' || t.tagName === 'INPUT') && t.type === 'submit'){
+          ev.preventDefault();
+          ev.stopPropagation();
+          var statusEl = el('owner-sync-status');
+          if(statusEl) statusEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setStatus('Login dulu di kotak "Sinkronisasi Konten ke Server" di atas.', '#f87171');
+          tampilkanLogin(true);
+          var emailIn = el('owner-sync-email');
+          if(emailIn) emailIn.focus();
+        }
+      }, true);
+    }
   }
 
   function init(){

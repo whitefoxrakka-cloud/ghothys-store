@@ -13,10 +13,7 @@
   };
 
   window.openOwnerPanel = function(){
-    if(!window.currentUser || window.currentUser.role!=='owner'){
-      window.showErrorToast('Akses Ditolak','Hanya Owner yang dapat mengakses fitur ini');
-      return;
-    }
+    if(!requireLoggedIn()) return;
     const modal = document.getElementById('owner-panel-modal');
     if(modal){ modal.style.display='block'; document.body.style.overflow='hidden'; }
     if(typeof window.renderOwnerDashboard === 'function') window.renderOwnerDashboard();
@@ -57,10 +54,7 @@
   }
 
   window.openAnnouncementManager = function(){
-    if(!window.currentUser || window.currentUser.role!=='owner'){
-      window.showErrorToast('Akses Ditolak','Hanya Owner yang dapat mengakses fitur ini');
-      return;
-    }
+    if(!requireLoggedIn()) return;
     const section = document.getElementById('owner-announcements-section');
     if(section){ section.style.display='block'; }
     if(typeof window.renderAnnouncements === 'function') window.renderAnnouncements();
@@ -147,10 +141,7 @@
 
   /* Event Manager (Phase 3) */
   window.openEventManager = function(){
-    if(!window.currentUser || window.currentUser.role!=='owner'){
-      window.showErrorToast('Akses Ditolak','Hanya Owner yang dapat mengakses fitur ini');
-      return;
-    }
+    if(!requireLoggedIn()) return;
     const section = document.getElementById('owner-events-section');
     if(section){ section.style.display='block'; }
     if(typeof window.renderEvents === 'function') window.renderEvents();
@@ -253,10 +244,7 @@
 
   /* Banner / Gallery Manager (Phase 4) */
   window.openBannerManager = function(){
-    if(!window.currentUser || window.currentUser.role!=='owner'){
-      window.showErrorToast('Akses Ditolak','Hanya Owner yang dapat mengakses fitur ini');
-      return;
-    }
+    if(!requireLoggedIn()) return;
     const section = document.getElementById('owner-banners-section');
     if(section){ section.style.display='block'; }
     if(typeof window.renderBanners === 'function') window.renderBanners();
@@ -367,11 +355,26 @@
     }
   });
 
+  /* Tombol OWNER PANEL muncul untuk siapa pun yang sudah login di toko.
+     Nanti tensorflow di dalam panel, hak menyimpan konten ke server
+     tetap dijaga server: harus punya cookie admin (login lewat kotak
+     Sinkronisasi Konten). Jadi tombol ini bukan gerbang keamanan. */
   function showOwnerButtonIfAllowed(){
-    const btn = document.getElementById('owner-panel-btn');
-    if(!btn) return;
-    if(window.currentUser && window.currentUser.role==='owner') btn.style.display='inline-block';
-    else btn.style.display='none';
+    const list = document.querySelectorAll('.owner-panel-open');
+    if(!list.length) return;
+    const tampil = !!window.currentUser;
+    list.forEach(function(btn){ btn.style.display = tampil ? 'inline-block' : 'none'; });
+  }
+  window.refreshOwnerButton = showOwnerButtonIfAllowed;
+
+  /* Dulu syaratnya window.currentUser.role==='owner', tapi tidak ada
+     kode yang pernah mengisi field role, jadi panel tidak bisa dibuka
+     sama sekali. Sekarang cukup sudah login. */
+  function requireLoggedIn(){
+    if(window.currentUser) return true;
+    window.showErrorToast('Login Dulu','Masuk ke akun toko dulu untuk membuka panel owner');
+    if(typeof window.openLoginModal==='function') window.openLoginModal();
+    return false;
   }
 
   document.addEventListener('DOMContentLoaded', function(){
