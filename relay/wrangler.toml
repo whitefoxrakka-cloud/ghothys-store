@@ -1,0 +1,11 @@
+name = "empty-snow-7e64ghothys-notif"
+main = "worker.js"
+compatibility_date = "2026-09-25"
+workers_dev = true
+
+[vars]
+# Hanya variabel PUBLIK (bukan secret). Secret asli tetap di
+# dashboard/secret put dan dipertahankan lewat --keep-vars.
+AIRTABLE_CONTENT_TABLE_NAME = "Content"
+# Origin yang BOLEH mengirim POST (tulis konten / order).
+ALLOWED_ORIGINS = "https://whitefoxrakka-cloud.github.io,http://127.0.0.1:8765,http://localhost:8787"

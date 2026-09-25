@@ -67,10 +67,10 @@ async function sendToTelegram(token, chatId, text) {
    ============================================================ */
 
 async function getContentFromAirtable(env) {
-	if (!env.AIRTABLE_PAT || !env.AIRTABLE_BASE_ID || !env.AIRTABLE_CONTENT_TABLE_NAME) {
+	if (!env.AIRTABLE_PAT || !cfgValue(env, 'AIRTABLE_BASE_ID') || !env.AIRTABLE_CONTENT_TABLE_NAME) {
 		return { ok: true, skipped: true, content: null };
 	}
-	const url = 'https://api.airtable.com/v0/' + env.AIRTABLE_BASE_ID + '/' +
+	const url = 'https://api.airtable.com/v0/' + cfgValue(env, 'AIRTABLE_BASE_ID') + '/' +
 		encodeURIComponent(env.AIRTABLE_CONTENT_TABLE_NAME) +
 		'?filterByFormula=' + encodeURIComponent("ORDER_ID='content_owner_1'") +
 		'&maxRecords=1';
@@ -102,13 +102,13 @@ async function getContentFromAirtable(env) {
    pernah ikut terkirim.
    ============================================================ */
 async function getOrderStatusFromAirtable(env, orderId) {
-	if (!env.AIRTABLE_PAT || !env.AIRTABLE_BASE_ID || !env.AIRTABLE_TABLE_NAME) {
+	if (!env.AIRTABLE_PAT || !cfgValue(env, 'AIRTABLE_BASE_ID') || !env.AIRTABLE_TABLE_NAME) {
 		return { ok: true, skipped: true, order: null };
 	}
 	if (!/^INV-\d{8}-\d+$/.test(orderId)) {
 		return { ok: false, error: 'Format Order ID tidak valid' };
 	}
-	const url = 'https://api.airtable.com/v0/' + env.AIRTABLE_BASE_ID + '/' +
+	const url = 'https://api.airtable.com/v0/' + cfgValue(env, 'AIRTABLE_BASE_ID') + '/' +
 		encodeURIComponent(env.AIRTABLE_TABLE_NAME) +
 		'?filterByFormula=' + encodeURIComponent("{Order ID}='" + orderId + "'") +
 		'&maxRecords=1';
@@ -138,7 +138,7 @@ async function getOrderStatusFromAirtable(env, orderId) {
 }
 
 async function saveContentToAirtable(env, content) {
-	if (!env.AIRTABLE_PAT || !env.AIRTABLE_BASE_ID || !env.AIRTABLE_CONTENT_TABLE_NAME) {
+	if (!env.AIRTABLE_PAT || !cfgValue(env, 'AIRTABLE_BASE_ID') || !env.AIRTABLE_CONTENT_TABLE_NAME) {
 		return { ok: true, skipped: true };
 	}
 	if (!content || typeof content !== 'object') throw new Error('Content must be an object');
@@ -147,7 +147,7 @@ async function saveContentToAirtable(env, content) {
 		'PAYLOAD': JSON.stringify(content),
 		'UPDATED_AT': new Date().toISOString()
 	};
-	const url = 'https://api.airtable.com/v0/' + env.AIRTABLE_BASE_ID + '/' +
+	const url = 'https://api.airtable.com/v0/' + cfgValue(env, 'AIRTABLE_BASE_ID') + '/' +
 		encodeURIComponent(env.AIRTABLE_CONTENT_TABLE_NAME) +
 		'?filterByFormula=' + encodeURIComponent("ORDER_ID='content_owner_1'");
 	const listRes = await fetch(url, {
@@ -157,7 +157,7 @@ async function saveContentToAirtable(env, content) {
 	const listBody = await listRes.json();
 	const existing = listBody.records && listBody.records[0];
 
-	const saveUrl = 'https://api.airtable.com/v0/' + env.AIRTABLE_BASE_ID + '/' +
+	const saveUrl = 'https://api.airtable.com/v0/' + cfgValue(env, 'AIRTABLE_BASE_ID') + '/' +
 		encodeURIComponent(env.AIRTABLE_CONTENT_TABLE_NAME) + (existing ? ('/' + existing.id) : '');
 	const res = await fetch(saveUrl, {
 		method: existing ? 'PATCH' : 'POST',
@@ -172,7 +172,7 @@ async function saveContentToAirtable(env, content) {
 }
 
 async function saveToAirtable(env, p) {
-	if (!env.AIRTABLE_PAT || !env.AIRTABLE_BASE_ID || !env.AIRTABLE_TABLE_NAME) {
+	if (!env.AIRTABLE_PAT || !cfgValue(env, 'AIRTABLE_BASE_ID') || !env.AIRTABLE_TABLE_NAME) {
 		return { ok: true, skipped: true, channel: 'airtable' };
 	}
 	const numericPrice = parseInt(p.price, 10);
@@ -188,7 +188,7 @@ async function saveToAirtable(env, p) {
 		'Time': p.time || '',
 		'Status': 'Pending'
 	};
-	const url = 'https://api.airtable.com/v0/' + env.AIRTABLE_BASE_ID + '/' +
+	const url = 'https://api.airtable.com/v0/' + cfgValue(env, 'AIRTABLE_BASE_ID') + '/' +
 		encodeURIComponent(env.AIRTABLE_TABLE_NAME);
 	const res = await fetch(url, {
 		method: 'POST',
@@ -237,15 +237,66 @@ function formatOrder(p) {
 	].join('\n');
 }
 
+function cfgValue(env, name) {
+	return env[name + '_SECRET'] || env[name] || '';
+}
+
+function parseList(value) {
+	return String(value || '')
+		.split(',')
+		.map(function (s) { return s.trim(); })
+		.filter(function (s) { return !!s; });
+}
+
+function isWriteRequest(request) {
+	const m = request.method;
+	return m !== 'GET' && m !== 'HEAD';
+}
+
+function isOriginAllowed(request, env) {
+	const origin = (request.headers.get('Origin') || '').trim();
+	const allowed = parseList(env.ALLOWED_ORIGINS);
+	if (!origin) return true;
+	return allowed.indexOf(origin) > -1;
+}
+
+function corsHeaders(request, env) {
+	const origin = (request.headers.get('Origin') || '').trim();
+	const allowed = parseList(env.ALLOWED_ORIGINS);
+	let allowOrigin = '*';
+	if (isWriteRequest(request)) {
+		allowOrigin = (!origin || allowed.indexOf(origin) > -1) ? origin || '*' : '';
+	} else if (origin && allowed.indexOf(origin) > -1) {
+		allowOrigin = origin;
+	}
+	const headers = {
+		'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+		'Access-Control-Allow-Headers': 'Content-Type, X-Ghothys-Secret',
+		'Content-Type': 'application/json',
+		'Vary': 'Origin',
+		'X-Content-Type-Options': 'nosniff',
+		'Referrer-Policy': 'no-referrer'
+	};
+	if (allowOrigin) headers['Access-Control-Allow-Origin'] = allowOrigin;
+	return headers;
+}
+
+function isOwnerAuthorized(request, env) {
+	const sent = request.headers.get('X-Ghothys-Secret');
+	if (env.SECRET && sent && sent === env.SECRET) return true;
+	const email = (request.headers.get('Cf-Access-Authenticated-User-Email') || '').trim().toLowerCase();
+	const owner = (env.OWNER_EMAIL || '').trim().toLowerCase();
+	if (email && owner && email === owner) return true;
+	return false;
+}
+
 export default {
 	async fetch(request, env) {
-		const headers = {
-			'Access-Control-Allow-Origin': '*',
-			'Access-Control-Allow-Methods': 'POST, OPTIONS',
-			'Access-Control-Allow-Headers': 'Content-Type, X-Ghothys-Secret',
-			'Content-Type': 'application/json'
-		};
+		const headers = corsHeaders(request, env);
 		if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
+		if (isWriteRequest(request) && !isOriginAllowed(request, env)) {
+			return new Response(JSON.stringify({ ok: false, error: 'Origin not allowed' }), { status: 403, headers });
+		}
 
         /* ============================================================
            ENDPOINT KONTEN OWNER (fitur #2 - Owner -> Publik)
@@ -298,8 +349,7 @@ export default {
 		}
 
         if (request.url.includes('/content')) {
-            const authorized = env.SECRET && request.headers.get('X-Ghothys-Secret') === env.SECRET;
-            if (!authorized) {
+            if (!isOwnerAuthorized(request, env)) {
                 return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 403, headers });
             }
             try {
@@ -311,7 +361,7 @@ export default {
             }
         }
 
-		if (env.SECRET && request.headers.get('X-Ghothys-Secret') !== env.SECRET) {
+		if (!isOwnerAuthorized(request, env)) {
 			return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 403, headers });
 		}
 
@@ -333,12 +383,12 @@ export default {
 			results.push({ channel: 'airtable', error: e.message });
 		}
 		try {
-			results.push(await sendToDiscord(env.DISCORD_WEBHOOK_URL, text));
+			results.push(await sendToDiscord(cfgValue(env, 'DISCORD_WEBHOOK_URL'), text));
 		} catch (e) {
 			results.push({ channel: 'discord', error: e.message });
 		}
 		try {
-			results.push(await sendToTelegram(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, text));
+			results.push(await sendToTelegram(env.TELEGRAM_BOT_TOKEN, cfgValue(env, 'TELEGRAM_CHAT_ID'), text));
 		} catch (e) {
 			results.push({ channel: 'telegram', error: e.message });
 		}

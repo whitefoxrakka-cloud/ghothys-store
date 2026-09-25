@@ -42,6 +42,9 @@ window.GHOTHYS_NOTIFY_CONFIG = {
 	// Contoh: 'https://ghothys-relay.example.com/notify'
 	telegramRelay: '',
 
+	// Nama toko yang dipakai di template pesan WA/bukti pesanan.
+	storeName: 'Ghothys Store',
+
 	// === NOMER TUJUAN PEMBAYARAN (ditampilkan ke customer) ===
 	// Key harus SAMA dengan value opsi payment di form checkout.
 	payments: {
