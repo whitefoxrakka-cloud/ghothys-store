@@ -355,48 +355,26 @@
     }
   });
 
-/* Tombol OWNER PANEL hanya muncul untuk user yang sudah login
-     DAN memiliki sesi admin valid (cookie ghothys_admin).
-     Cek via /admin/session endpoint. */
+/* Tombol OWNER PANEL muncul untuk user yang sudah login di toko.
+     Di dalam panel, hak menyimpan konten ke server tetap dijaga:
+     harus punya cookie admin (login lewat kotak Sinkronisasi Konten).
+     Jadi tombol ini BUKAN gerbang keamanan penuh, cuma akses UI. */
   var ownerButtonChecked = false;
-  async function showOwnerButtonIfAllowed(){
+  function showOwnerButtonIfAllowed(){
     const list = document.querySelectorAll('.owner-panel-open');
     if(!list.length) return;
-    if(!window.currentUser){
-      list.forEach(function(btn){ btn.style.display = 'none'; });
-      return;
-    }
-    if(ownerButtonChecked) return; // sudah dicek
-    ownerButtonChecked = true;
-
-    var relayUrl = '';
-    try { relayUrl = String(window.GHOTHYS_NOTIFY_CONFIG?.relayUrl || '').replace(/\/+$/, ''); } catch(e) {}
-    if(!relayUrl){
-      list.forEach(function(btn){ btn.style.display = 'none'; });
-      return;
-    }
-
-    try {
-      const res = await fetch(relayUrl + '/admin/session', { method: 'GET', credentials: 'include' });
-      if(!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-      const isAdmin = data && data.success && data.data && data.data.authed === true;
-      list.forEach(function(btn){ btn.style.display = isAdmin ? 'inline-block' : 'none'; });
-    } catch(e) {
-      list.forEach(function(btn){ btn.style.display = 'none'; });
-    }
+    const tampil = !!window.currentUser;
+    list.forEach(function(btn){ btn.style.display = tampil ? 'inline-block' : 'none'; });
   }
   window.refreshOwnerButton = showOwnerButtonIfAllowed;
 
   /* requireLoggedIn dipakai handler internal panel (buka manajer announc/event/banner).
-     Sekarang butuh login toko + sesi admin. */
+     Cukup login toko. Hak simpan ke server dicek terpisah via owner-sync.js. */
   function requireLoggedIn(){
-    if(!window.currentUser){
-      window.showErrorToast('Login Dulu','Masuk ke akun toko dulu untuk membuka panel owner');
-      if(typeof window.openLoginModal==='function') window.openLoginModal();
-      return false;
-    }
-    return true;
+    if(window.currentUser) return true;
+    window.showErrorToast('Login Dulu','Masuk ke akun toko dulu untuk membuka panel owner');
+    if(typeof window.openLoginModal==='function') window.openLoginModal();
+    return false;
   }
 
   document.addEventListener('DOMContentLoaded', function(){
@@ -404,24 +382,14 @@
     window.initializeOwnerData();
     showOwnerButtonIfAllowed();
 
-// ensure the close button inside modal works
+    // ensure the close button inside modal works
     const closeBtn = document.querySelector('#owner-panel-modal .owner-close');
     if(closeBtn) closeBtn.addEventListener('click', () => window.closeOwnerPanel());
-
-    /* Refresh tombol owner saat status login admin berubah
-       (dari owner-sync.js login/logout). */
-    document.addEventListener('ghothys-sync', function(e){
-      var s = e && e.detail ? e.detail : {};
-      if(s.status === 'ok' || s.status === 'perlu-login'){
-        ownerButtonChecked = false;
-        showOwnerButtonIfAllowed();
-      }
-    });
 
     // re-render whenever UI updates (best-effort): hook into updateUI by wrapping if exists
     if(typeof window.updateUI === 'function'){
       const orig = window.updateUI;
-      window.updateUI = function(){ orig(); ownerButtonChecked = false; showOwnerButtonIfAllowed(); };
+      window.updateUI = function(){ orig(); showOwnerButtonIfAllowed(); };
     }
   });
 })();
