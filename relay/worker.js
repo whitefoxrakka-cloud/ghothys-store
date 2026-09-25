@@ -270,8 +270,8 @@ function corsHeaders(request, env) {
 		allowOrigin = origin;
 	}
 	const headers = {
-		'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-		'Access-Control-Allow-Headers': 'Content-Type, X-Ghothys-Secret',
+		'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+		'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Ghothys-Secret',
 		'Content-Type': 'application/json',
 		'Vary': 'Origin',
 		'X-Content-Type-Options': 'nosniff',
@@ -290,12 +290,387 @@ function isOwnerAuthorized(request, env) {
 	return false;
 }
 
+/* ============================================================
+   ADMIN: LOGIN + KELOLA ORDER (untuk panel /admin)
+   ------------------------------------------------------------
+   Kredensial owner TIDAK ada di kode/repo, tapi di Worker secrets:
+     ADMIN_EMAIL         = email owner
+     ADMIN_PASSWORD_HASH = pbkdf2$<iterations>$<saltB64url>$<hashB64url>
+     JWT_SECRET          = kunci acak panjang untuk menandatangani token
+
+   Endpoint (semua perlu header "Authorization: Bearer <token>",
+   kecuali /admin/login):
+     POST  /admin/login                 -> { success, data: { token, user } }
+     POST  /admin/logout                -> { success: true }
+     GET   /admin/profile               -> { success, data: { email, role } }
+     GET   /admin/dashboard             -> statistik + grafik 7 hari
+     GET   /admin/orders?page&limit     -> daftar order (punya data customer)
+     GET   /admin/orders/<recId>        -> detail satu order
+     PATCH /admin/orders/<recId>/status -> ubah status order
+
+   Sumber data tetap tabel Airtable (env AIRTABLE_TABLE_NAME),
+   jadi status yang diubah di panel langsung terlihat pelanggan
+   di halaman cek status publik.
+   ============================================================ */
+
+const ADMIN_STATUSES = ['Pending', 'Diproses', 'Success', 'Selesai', 'Cancel', 'Dibatalkan', 'Refund'];
+const loginAttempts = new Map();
+
+function jsonResponse(obj, status, headers) {
+	return new Response(JSON.stringify(obj), { status: status, headers: headers });
+}
+
+function b64urlFromBytes(bytes) {
+	let bin = '';
+	for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+	return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function bytesFromB64url(value) {
+	const s = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
+	const pad = (s.length % 4) ? ('='.repeat(4 - (s.length % 4))) : '';
+	const bin = atob(s + pad);
+	const out = new Uint8Array(bin.length);
+	for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+	return out;
+}
+
+async function verifyPassword(password, stored) {
+	const parts = String(stored || '').split('$');
+	if (parts.length !== 4 || parts[0] !== 'pbkdf2') return false;
+	const iterations = parseInt(parts[1], 10);
+	/* Cloudflare Workers membatasi iterasi PBKDF2 maksimal 100.000
+	   (Web Crypto: deriveBits melempar error di atas batas itu). */
+	if (!isFinite(iterations) || iterations < 10000 || iterations > 100000) return false;
+	const salt = bytesFromB64url(parts[2]);
+	const expected = bytesFromB64url(parts[3]);
+	if (!salt.length || !expected.length) return false;
+	try {
+		const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(String(password || '')), { name: 'PBKDF2' }, false, ['deriveBits']);
+		const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: salt, iterations: iterations, hash: 'SHA-256' }, material, expected.length * 8);
+		const got = new Uint8Array(bits);
+		let diff = (got.length === expected.length) ? 0 : 1;
+		for (let i = 0; i < expected.length; i++) diff |= (got[i] || 0) ^ expected[i];
+		return diff === 0;
+	} catch (e) {
+		return false;
+	}
+}
+
+async function hmacKey(secret) {
+	return crypto.subtle.importKey('raw', new TextEncoder().encode(String(secret || '')), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+}
+
+async function signJwt(secret, payload) {
+	const head = b64urlFromBytes(new TextEncoder().encode(JSON.stringify({ alg: 'HS256', typ: 'JWT' })));
+	const body = b64urlFromBytes(new TextEncoder().encode(JSON.stringify(payload)));
+	const data = head + '.' + body;
+	const sig = new Uint8Array(await crypto.subtle.sign('HMAC', await hmacKey(secret), new TextEncoder().encode(data)));
+	return data + '.' + b64urlFromBytes(sig);
+}
+
+async function verifyJwt(secret, token) {
+	const parts = String(token || '').split('.');
+	if (parts.length !== 3) return null;
+	const data = parts[0] + '.' + parts[1];
+	let ok = false;
+	try {
+		ok = await crypto.subtle.verify('HMAC', await hmacKey(secret), bytesFromB64url(parts[2]), new TextEncoder().encode(data));
+	} catch (e) {
+		ok = false;
+	}
+	if (!ok) return null;
+	try {
+		const payload = JSON.parse(new TextDecoder().decode(bytesFromB64url(parts[1])));
+		if (!payload || typeof payload.exp !== 'number') return null;
+		if (payload.exp * 1000 < Date.now()) return null;
+		return payload;
+	} catch (e) {
+		return null;
+	}
+}
+
+function loginThrottle(key) {
+	const now = Date.now();
+	const max = 8;
+	const span = 10 * 60 * 1000;
+	const list = (loginAttempts.get(key) || []).filter(function (t) { return now - t < span; });
+	list.push(now);
+	loginAttempts.set(key, list);
+	return { blocked: list.length > max };
+}
+
+function ordersUrl(env) {
+	return 'https://api.airtable.com/v0/' + cfgValue(env, 'AIRTABLE_BASE_ID') + '/' + encodeURIComponent(env.AIRTABLE_TABLE_NAME);
+}
+
+function airtableHeaders(env) {
+	return { 'Authorization': 'Bearer ' + env.AIRTABLE_PAT, 'Content-Type': 'application/json' };
+}
+
+async function fetchOrdersRecords(env, maxRecords) {
+	if (!env.AIRTABLE_PAT || !cfgValue(env, 'AIRTABLE_BASE_ID') || !env.AIRTABLE_TABLE_NAME) {
+		throw new Error('Airtable belum dikonfigurasi (AIRTABLE_PAT / base / tabel)');
+	}
+	const cap = Math.min(Math.max(parseInt(maxRecords, 10) || 300, 1), 1000);
+	const records = [];
+	let offset = '';
+	while (records.length < cap) {
+		const pageSize = Math.min(100, cap - records.length);
+		const qs = new URLSearchParams();
+		qs.set('pageSize', String(pageSize));
+		qs.set('sort[0][field]', 'Time');
+		qs.set('sort[0][direction]', 'desc');
+		if (offset) qs.set('offset', offset);
+		let res = await fetch(ordersUrl(env) + '?' + qs.toString(), { headers: airtableHeaders(env) });
+		if (!res.ok && res.status === 400) {
+			const retry = new URLSearchParams();
+			retry.set('pageSize', String(pageSize));
+			if (offset) retry.set('offset', offset);
+			res = await fetch(ordersUrl(env) + '?' + retry.toString(), { headers: airtableHeaders(env) });
+		}
+		if (!res.ok) {
+			let detail = '';
+			try { const j = await res.json(); detail = (j.error && j.error.message) || ''; } catch (e) {}
+			throw new Error('Airtable orders HTTP ' + res.status + (detail ? ' ' + detail : ''));
+		}
+		const body = await res.json();
+		const batch = body.records || [];
+		for (const rec of batch) records.push(rec);
+		offset = body.offset || '';
+		if (!offset || batch.length === 0) break;
+	}
+	return records;
+}
+
+function mapOrderRecord(rec) {
+	const f = (rec && rec.fields) || {};
+	return {
+		id: (rec && rec.id) || '',
+		order_id: f['Order ID'] || '',
+		customer_name: f.Customer || '-',
+		user_uid: f.UID || '-',
+		game: f.Game || '-',
+		server: f.Server || '-',
+		product: f.Item || '-',
+		price: Number(f.Price || 0) || 0,
+		payment: f.Payment || '-',
+		status: f.Status || 'Pending',
+		created_at: (rec && rec.createdTime) || f.Time || ''
+	};
+}
+
+/* Bucket "hari ini" memakai waktu Indonesia (WIB = UTC+7, tanpa DST),
+   karena itu yang dibaca pemilik toko saat melihat dashboard. */
+const WIB_OFFSET_MIN = 420;
+
+function dayKeyOf(value, offsetMin) {
+	if (!value) return '';
+	const d = new Date(value);
+	if (isNaN(d.getTime())) return '';
+	return new Date(d.getTime() + ((offsetMin || 0) * 60000)).toISOString().slice(0, 10);
+}
+
+async function buildDashboard(env) {
+	const records = await fetchOrdersRecords(env, 500);
+	const orders = records.map(mapOrderRecord);
+	const todayKey = dayKeyOf(new Date().toISOString(), WIB_OFFSET_MIN);
+	let totalOrdersToday = 0;
+	let totalRevenueToday = 0;
+	const statusCounts = { Pending: 0, Diproses: 0, Success: 0, Cancel: 0 };
+	const labels = [];
+	const dayKeys = [];
+	for (let i = 6; i >= 0; i--) {
+		const d = new Date(Date.now() - (i * 86400000));
+		const key = dayKeyOf(d.toISOString(), WIB_OFFSET_MIN);
+		dayKeys.push(key);
+		labels.push(key.slice(8, 10));
+	}
+	const perDay = [0, 0, 0, 0, 0, 0, 0];
+	for (const o of orders) {
+		const key = dayKeyOf(o.created_at, WIB_OFFSET_MIN);
+		if (key && key === todayKey) {
+			totalOrdersToday++;
+			totalRevenueToday += o.price;
+		}
+		const idx = dayKeys.indexOf(key);
+		if (idx > -1) perDay[idx]++;
+		const st = (o.status || '').toLowerCase();
+		if (statusCounts[o.status] !== undefined) statusCounts[o.status]++;
+		else if (st === 'selesai' || st === 'success') statusCounts.Success++;
+		else if (st === 'diproses' || st === 'proses') statusCounts.Diproses++;
+		else if (st === 'cancel' || st === 'dibatalkan') statusCounts.Cancel++;
+		else if (st === 'pending') statusCounts.Pending++;
+	}
+	return {
+		success: true,
+		data: {
+			totals: { totalOrdersToday: totalOrdersToday, totalRevenueToday: totalRevenueToday, totalOrders: orders.length },
+			totalMembers: null,
+			statusCounts: statusCounts,
+			chart: { days: labels, orders: perDay }
+		}
+	};
+}
+
+async function handleListOrders(request, env, url) {
+	const page = Math.max(parseInt(url.searchParams.get('page') || '1', 10) || 1, 1);
+	const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '10', 10) || 10, 1), 100);
+	const search = (url.searchParams.get('search') || '').trim().toLowerCase();
+	const status = (url.searchParams.get('status') || '').trim();
+	const sortBy = url.searchParams.get('sortBy') || 'created_at';
+	const sortOrder = (url.searchParams.get('sortOrder') || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
+	const records = await fetchOrdersRecords(env, 500);
+	let rows = records.map(mapOrderRecord);
+	if (status) {
+		rows = rows.filter(function (o) { return (o.status || '').toLowerCase() === status.toLowerCase(); });
+	}
+	if (search) {
+		rows = rows.filter(function (o) {
+			return [o.order_id, o.customer_name, o.user_uid, o.game, o.payment, o.product].join(' ').toLowerCase().indexOf(search) > -1;
+		});
+	}
+	const dir = (sortOrder === 'asc') ? 1 : -1;
+	rows.sort(function (a, b) {
+		const x = a[sortBy];
+		const y = b[sortBy];
+		if (typeof x === 'number' && typeof y === 'number') return (x - y) * dir;
+		return String(x || '').localeCompare(String(y || ''), 'id-ID') * dir;
+	});
+	const totalRows = rows.length;
+	const totalPages = Math.max(1, Math.ceil(totalRows / limit));
+	const safePage = Math.min(page, totalPages);
+	const start = (safePage - 1) * limit;
+	return {
+		success: true,
+		data: { data: rows.slice(start, start + limit), totalRows: totalRows, page: safePage, totalPages: totalPages, limit: limit }
+	};
+}
+
+async function handleAdminRoute(request, env, url, headers) {
+	const path = url.pathname;
+	const method = request.method;
+
+	if (path === '/admin/login' && method === 'POST') {
+		const ip = (request.headers.get('CF-Connecting-IP') || 'tidak-known').trim();
+		let body = null;
+		try { body = await request.json(); } catch (e) { body = null; }
+		const email = String((body && body.email) || '').trim().toLowerCase();
+		const password = String((body && body.password) || '');
+		const throttleKey = ip + '|' + email;
+		if (loginThrottle(throttleKey).blocked) {
+			return jsonResponse({ success: false, message: 'Terlalu banyak percobaan login. Tunggu beberapa menit lalu coba lagi.' }, 429, headers);
+		}
+		const adminEmail = (env.ADMIN_EMAIL || '').trim().toLowerCase();
+		if (!adminEmail || !env.ADMIN_PASSWORD_HASH || !env.JWT_SECRET) {
+			return jsonResponse({ success: false, message: 'Admin belum dikonfigurasi di Worker (ADMIN_EMAIL, ADMIN_PASSWORD_HASH, JWT_SECRET).' }, 503, headers);
+		}
+		const emailOk = !!email && email === adminEmail;
+		const passOk = emailOk ? await verifyPassword(password, env.ADMIN_PASSWORD_HASH) : false;
+		if (!emailOk || !passOk) {
+			return jsonResponse({ success: false, message: 'Email atau password salah.' }, 401, headers);
+		}
+		loginAttempts.delete(throttleKey);
+		const nowSec = Math.floor(Date.now() / 1000);
+		const token = await signJwt(env.JWT_SECRET, { sub: email, role: 'admin', iat: nowSec, exp: nowSec + (8 * 3600) });
+		return jsonResponse({ success: true, data: { token: token, user: { email: email, role: 'admin' } } }, 200, headers);
+	}
+
+	const authHeader = (request.headers.get('Authorization') || '').trim();
+	const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+	const payload = await verifyJwt(env.JWT_SECRET, token);
+	if (!payload) {
+		return jsonResponse({ success: false, message: 'Sesi tidak valid atau sudah habis. Silakan login ulang.' }, 401, headers);
+	}
+
+	if (path === '/admin/logout' && (method === 'POST' || method === 'GET')) {
+		return jsonResponse({ success: true, data: { loggedOut: true } }, 200, headers);
+	}
+
+	if (path === '/admin/profile' && method === 'GET') {
+		return jsonResponse({ success: true, data: { email: payload.sub, role: payload.role } }, 200, headers);
+	}
+
+	if (path === '/admin/dashboard' && method === 'GET') {
+		try {
+			return jsonResponse(await buildDashboard(env), 200, headers);
+		} catch (e) {
+			return jsonResponse({ success: false, message: e.message }, 500, headers);
+		}
+	}
+
+	if (path === '/admin/orders' && method === 'GET') {
+		try {
+			return jsonResponse(await handleListOrders(request, env, url), 200, headers);
+		} catch (e) {
+			return jsonResponse({ success: false, message: e.message }, 500, headers);
+		}
+	}
+
+	const detailMatch = path.match(/^\/admin\/orders\/([^/]+)$/);
+	if (detailMatch && method === 'GET') {
+		try {
+			const res = await fetch(ordersUrl(env) + '/' + encodeURIComponent(detailMatch[1]), { headers: airtableHeaders(env) });
+			if (res.status === 404) {
+				return jsonResponse({ success: false, message: 'Order tidak ditemukan.' }, 404, headers);
+			}
+			if (!res.ok) throw new Error('Airtable order HTTP ' + res.status);
+			const body = await res.json();
+			return jsonResponse({ success: true, data: mapOrderRecord(body) }, 200, headers);
+		} catch (e) {
+			return jsonResponse({ success: false, message: e.message }, 500, headers);
+		}
+	}
+
+	const statusMatch = path.match(/^\/admin\/orders\/([^/]+)\/status$/);
+	if (statusMatch && (method === 'PATCH' || method === 'POST')) {
+		let body = null;
+		try { body = await request.json(); } catch (e) { body = null; }
+		const nextStatus = String((body && body.status) || '').trim();
+		if (ADMIN_STATUSES.indexOf(nextStatus) === -1) {
+			return jsonResponse({ success: false, message: 'Status tidak dikenal. Pilihan: ' + ADMIN_STATUSES.join(', ') + '.' }, 400, headers);
+		}
+		try {
+			const res = await fetch(ordersUrl(env) + '/' + encodeURIComponent(statusMatch[1]), {
+				method: 'PATCH',
+				headers: airtableHeaders(env),
+				body: JSON.stringify({ fields: { 'Status': nextStatus } })
+			});
+			if (res.status === 404) {
+				return jsonResponse({ success: false, message: 'Order tidak ditemukan.' }, 404, headers);
+			}
+			if (!res.ok) {
+				let detail = '';
+				try { const j = await res.json(); detail = (j.error && j.error.message) || ''; } catch (e) {}
+				throw new Error('Airtable update HTTP ' + res.status + (detail ? ' ' + detail : ''));
+			}
+			const body2 = await res.json();
+			return jsonResponse({ success: true, data: mapOrderRecord(body2) }, 200, headers);
+		} catch (e) {
+			return jsonResponse({ success: false, message: e.message }, 500, headers);
+		}
+	}
+
+	return jsonResponse({ success: false, message: 'Endpoint admin tidak dikenal.' }, 404, headers);
+}
+
 export default {
 	async fetch(request, env) {
 		const headers = corsHeaders(request, env);
 		if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
 		if (isWriteRequest(request) && !isOriginAllowed(request, env)) {
 			return new Response(JSON.stringify({ ok: false, error: 'Origin not allowed' }), { status: 403, headers });
+		}
+
+		/* Semua endpoint /admin/* (login, dashboard, orders) melewati
+		   gerbang authenticate di handleAdminRoute, dan asal request-nya
+		   tetap harus masuk daftar ALLOWED_ORIGINS. */
+		const requestUrl = new URL(request.url);
+		if (requestUrl.pathname.indexOf('/admin/') === 0) {
+			if (!isOriginAllowed(request, env)) {
+				return new Response(JSON.stringify({ ok: false, error: 'Origin not allowed' }), { status: 403, headers });
+			}
+			return handleAdminRoute(request, env, requestUrl, headers);
 		}
 
         /* ============================================================

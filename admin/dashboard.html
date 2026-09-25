@@ -3,33 +3,56 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Monitoring - Ghothys Store</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Dashboard - Ghothys Store</title>
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/order-message.css" />
+  <link rel="stylesheet" href="css/admin.css" />
   <script src="../js/notify-config.js"></script>
 </head>
 <body>
-  <div style="max-width: 720px; margin: 36px auto; padding: 0 16px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 18px;">
-      <h1 style="font-size:20px; color:var(--text-primary); margin:0;">GHOTHYS STORE • MONITORING</h1>
-      <a href="../index.html" style="color:var(--text-secondary); font-weight:700; font-size:13px;">← Kembali ke toko</a>
+  <div class="adm-wrap">
+    <div class="adm-head">
+      <h1>GHOTHYS STORE • DASHBOARD</h1>
+      <nav>
+        <a href="orders.html" class="adm-btn adm-btn-ghost">Daftar Order</a>
+        <a href="../index.html" class="adm-btn adm-btn-ghost">← Toko</a>
+        <button type="button" class="adm-btn adm-btn-ghost" id="refresh-btn">Refresh</button>
+        <button type="button" class="adm-btn adm-btn-danger" id="logout-btn">Keluar</button>
+      </nav>
     </div>
 
-    <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:16px; box-shadow:var(--shadow); padding:22px; margin-bottom:14px; text-align:center;">
-      <div style="font-size:15px; font-weight:900; color:var(--text-primary);">Dashboard Orderan</div>
-      <div style="color:var(--text-secondary); font-weight:600; font-size:13px; margin:6px 0 14px;">Semua order pembeli masuk otomatis ke Airtable. Buka dari HP/laptop mana saja, update status langsung di sana.</div>
-      <a href="https://airtable.com/appRZahzh6lDqzmtm" target="_blank" rel="noopener"
-         style="display:inline-block; padding:14px 22px; background:var(--accent,#7c3aed); color:#fff; border-radius:12px; font-weight:900; text-decoration:none;">Buka Dashboard Airtable →</a>
+    <div class="adm-stats">
+      <div class="adm-stat">
+        <div class="adm-stat-label">Order Hari Ini</div>
+        <div class="adm-stat-value" id="stat-total-orders">0</div>
+      </div>
+      <div class="adm-stat">
+        <div class="adm-stat-label">Omzet Hari Ini</div>
+        <div class="adm-stat-value" id="stat-total-revenue">Rp 0</div>
+      </div>
+      <div class="adm-stat">
+        <div class="adm-stat-label">Total Order</div>
+        <div class="adm-stat-value" id="stat-total-members">0</div>
+      </div>
     </div>
 
-    <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:16px; box-shadow:var(--shadow); padding:22px; margin-bottom:14px;">
-      <div style="font-size:15px; font-weight:900; color:var(--text-primary); margin-bottom:10px;">Bantu Proses Order (Salin Detail Order)</div>
-      <div style="color:var(--text-secondary); font-weight:600; font-size:13px; line-height:1.7; margin-bottom:14px;">
+    <div class="adm-card">
+      <h2>Status Order</h2>
+      <p class="adm-note" id="status-summary">Memuat data…</p>
+      <div class="adm-pills" id="status-pills"></div>
+      <h2 style="margin-top:22px;">Order 7 Hari Terakhir</h2>
+      <div class="adm-chart" id="chart-orders"></div>
+    </div>
+
+    <div class="adm-card">
+      <h2>Bantu Proses Order (Salin Detail Order)</h2>
+      <p class="adm-note">
         Isi data order, klik <strong>Buat Template</strong>, lalu salin atau kirim langsung ke pembeli lewat WhatsApp.
         Template otomatis berisi status, link cek status, dan detail pembayaran.
-      </div>
+      </p>
 
-      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px;">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-top:14px;">
         <div>
           <label class="gm-msg-label" for="gm-order-id">Order ID</label>
           <input class="gm-msg-input" type="text" id="gm-order-id" placeholder="INV-260925-0001 atau 0001" maxlength="32">
@@ -86,19 +109,20 @@
       <p class="gm-meta">Baris paling bawah (nomor WA pembeli) hanya untuk catatan internal — hapus sebelum kirim ke pembeli.</p>
     </div>
 
-    <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:16px; box-shadow:var(--shadow); padding:22px;">
-      <div style="font-size:15px; font-weight:900; color:var(--text-primary); margin-bottom:10px;">Notifikasi Otomatis (sudah aktif)</div>
-      <div style="color:var(--text-secondary); font-weight:600; font-size:13px; line-height:1.7;">
-        Setiap ada order baru, kamu dapat notifikasi otomatis di:
-        • Discord (server/private channel kamu)
-        • Email (Formspree → whitefox.rakka@gmail.com)
-        • Telegram (bot Ghothys Notif)
-      </div>
-      <div style="color:var(--text-secondary); font-weight:600; font-size:13px; margin-top:12px;">
-        Auto-refresh tiap 30 detik dibuka ulang. Tidak ada login — data berada di akun Airtable kamu sendiri.
+    <div class="adm-card">
+      <h2>Notifikasi Otomatis (sudah aktif)</h2>
+      <p class="adm-note">
+        Setiap ada order baru, kamu dapat notifikasi otomatis di Discord dan Telegram.
+        Orderan masuk ke Airtable, dan status yang kamu ubah di panel ini langsung terlihat pembeli di halaman cek status.
+      </p>
+      <div class="adm-actions">
+        <a class="adm-btn adm-btn-ghost" href="https://airtable.com/appRZahzh6lDqzmtm" target="_blank" rel="noopener">Buka Airtable (opsional)</a>
       </div>
     </div>
   </div>
+
+  <script src="js/admin-api.js"></script>
+  <script src="js/dashboard.js"></script>
   <script src="js/order-message.js"></script>
 </body>
 </html>

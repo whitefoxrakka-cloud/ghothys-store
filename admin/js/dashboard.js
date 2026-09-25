@@ -55,7 +55,7 @@
 
     if(totalOrders) totalOrders.textContent = String(d.totals?.totalOrdersToday ?? '0');
     if(totalRevenue) totalRevenue.textContent = moneyIdr(d.totals?.totalRevenueToday ?? 0);
-    if(totalMembers) totalMembers.textContent = String(d.totalMembers ?? 0);
+    if(totalMembers) totalMembers.textContent = String(d.totals?.totalOrders ?? 0);
 
     const sc = d.statusCounts || {};
     const sumText = `Pending ${sc.Pending || 0} • Diproses ${sc.Diproses || 0} • Success ${sc.Success || 0} • Cancel ${sc.Cancel || 0}`;

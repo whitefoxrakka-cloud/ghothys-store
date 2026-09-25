@@ -3,11 +3,101 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="refresh" content="0; url=./dashboard.html" />
-  <title>Redirect - Ghothys Store</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Daftar Order - Ghothys Store</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="css/admin.css" />
+  <script src="../js/notify-config.js"></script>
 </head>
 <body>
-  <p style="font-family:system-ui; margin:24px;">Menu admin sudah digabung ke Monitoring. Buka <a href="./dashboard.html">dashboard</a>.</p>
-  <script>window.location.replace('./dashboard.html');</script>
+  <div class="adm-wrap">
+    <div class="adm-head">
+      <h1>DAFTAR ORDER</h1>
+      <nav>
+        <a href="dashboard.html" class="adm-btn adm-btn-ghost" id="back-dashboard">← Dashboard</a>
+        <button type="button" class="adm-btn adm-btn-danger" id="logout-btn">Keluar</button>
+      </nav>
+    </div>
+
+    <div class="adm-card">
+      <div class="adm-filters">
+        <div>
+          <label class="adm-label" for="search">Cari</label>
+          <input class="adm-input" type="search" id="search" placeholder="Order ID, nama, UID, game" />
+        </div>
+        <div>
+          <label class="adm-label" for="status">Status</label>
+          <select class="adm-input" id="status">
+            <option value="">Semua status</option>
+            <option value="Pending">Pending</option>
+            <option value="Diproses">Diproses</option>
+            <option value="Success">Success</option>
+            <option value="Cancel">Cancel</option>
+          </select>
+        </div>
+        <div>
+          <label class="adm-label" for="sortBy">Urutkan</label>
+          <select class="adm-input" id="sortBy">
+            <option value="created_at">Waktu masuk</option>
+            <option value="order_id">Order ID</option>
+            <option value="customer_name">Nama pembeli</option>
+            <option value="price">Nominal</option>
+            <option value="status">Status</option>
+          </select>
+        </div>
+        <div>
+          <label class="adm-label" for="sortOrder">Arah</label>
+          <select class="adm-input" id="sortOrder">
+            <option value="desc">Terbaru dulu</option>
+            <option value="asc">Terlama dulu</option>
+          </select>
+        </div>
+        <div>
+          <label class="adm-label" for="limit">Jumlah per halaman</label>
+          <select class="adm-input" id="limit">
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="adm-actions">
+        <button type="button" class="adm-btn" id="apply-btn">Terapkan</button>
+        <span id="apply-spinner" style="display:none; font-size:12px; font-weight:800;">Memuat…</span>
+      </div>
+
+      <div class="adm-table-wrap">
+        <table class="adm-table">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Pembeli</th>
+              <th>UID</th>
+              <th>Game</th>
+              <th>Nominal</th>
+              <th>Status</th>
+              <th>Masuk</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="orders-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="adm-meta-row">
+        <span id="meta-text">Memuat data…</span>
+        <span class="adm-actions" style="margin-top:0;">
+          <button type="button" class="adm-btn adm-btn-ghost" id="prev-btn">Sebelumnya</button>
+          <span id="page-text">Page 1</span>
+          <button type="button" class="adm-btn adm-btn-ghost" id="next-btn">Berikutnya</button>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/admin-api.js"></script>
+  <script src="js/orders.js"></script>
 </body>
 </html>

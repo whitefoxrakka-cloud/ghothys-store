@@ -14,7 +14,11 @@
   }
 
   async function adminFetch(endpoint, options = {}) {
-    const API_BASE_URL = 'http://localhost:3000/api';
+    const cfg = window.GHOTHYS_NOTIFY_CONFIG || {};
+    const API_BASE_URL = String(cfg.relayUrl || '').replace(/\/+$/, '');
+    if (!API_BASE_URL) {
+      throw new Error('relayUrl belum diatur di js/notify-config.js');
+    }
 
     const url = `${API_BASE_URL}${endpoint}`;
     const token = getToken();

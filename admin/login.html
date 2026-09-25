@@ -3,11 +3,46 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="refresh" content="0; url=./dashboard.html" />
-  <title>Redirect - Ghothys Store</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Login Admin - Ghothys Store</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="css/admin.css" />
+  <script src="../js/notify-config.js"></script>
 </head>
 <body>
-  <p style="font-family:system-ui; margin:24px;">Menu admin sudah digabung ke Monitoring. Buka <a href="./dashboard.html">dashboard</a>.</p>
-  <script>window.location.replace('./dashboard.html');</script>
+  <div class="adm-wrap adm-narrow">
+    <div class="adm-head">
+      <h1>GHOTHYS STORE • ADMIN</h1>
+      <a href="../index.html" class="adm-btn adm-btn-ghost">← Toko</a>
+    </div>
+
+    <div class="adm-card">
+      <h2>Masuk sebagai Owner</h2>
+      <p class="adm-note">Panel ini hanya untuk kamu. Data order tidak bisa dibaca tanpa login.</p>
+
+      <form id="login-form" novalidate>
+        <div style="margin-top:16px;">
+          <label class="adm-label" for="admin-email">Email</label>
+          <input class="adm-input" type="email" id="admin-email" autocomplete="username" placeholder="email@kamu.com" required />
+        </div>
+        <div style="margin-top:12px;">
+          <label class="adm-label" for="admin-password">Password</label>
+          <input class="adm-input" type="password" id="admin-password" autocomplete="current-password" placeholder="Password owner" required />
+        </div>
+        <div class="adm-actions">
+          <button class="adm-btn" type="submit" id="login-btn">Masuk</button>
+          <span id="login-spinner" style="display:none; font-size:12px; font-weight:800;">Memproses…</span>
+        </div>
+      </form>
+    </div>
+
+    <div class="adm-card">
+      <h2>Lupa password?</h2>
+      <p class="adm-note">Password owner disimpan sebagai hash (PBKDF2-SHA256) di secret Cloudflare, bukan di repository. Kalau lupa, ganti lewat <code>npx wrangler secret put ADMIN_PASSWORD_HASH</code> — caranya ada di <code>relay/DEPLOY.txt</code>.</p>
+    </div>
+  </div>
+
+  <script src="js/admin-api.js"></script>
+  <script src="js/auth.js"></script>
 </body>
 </html>

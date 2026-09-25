@@ -12,20 +12,24 @@ SECRET SUDAH TERPASANG (type secret, terenkripsi)
   SECRET                    kata sandi untuk tulis konten (X-Ghothys-Secret)
   AIRTABLE_PAT              Personal Access Token Airtable
   AIRTABLE_BASE_ID_SECRET   ID base Airtable
+  DISCORD_WEBHOOK_URL_SECRET webhook notifikasi Discord (sudah diuji, HTTP 204)
   TELEGRAM_BOT_TOKEN        token bot Telegram
   OWNER_EMAIL               email owner untuk Cloudflare Access
+  ADMIN_EMAIL               email login panel admin
+  ADMIN_PASSWORD_HASH       hash password admin (format: pbkdf2$ITERASI$SALT$hash)
+  JWT_SECRET                kunci penanda token sesi admin
 
 VARIABEL PUBLIK (plain, aman tampil di wrangler.toml)
   AIRTABLE_CONTENT_TABLE_NAME = "Content"
   ALLOWED_ORIGINS = "https://whitefoxrakka-cloud.github.io,http://127.0.0.1:8765,http://localhost:8787"
 
 MASIH PLAIN VARIABLE (nilai hanya di dashboard, belum dienkripsi)
-  DISCORD_WEBHOOK_URL   -> kalau mau dienkripsi, jalankan:
-                            npx wrangler secret put DISCORD_WEBHOOK_URL_SECRET
-                          lalu worker otomatis memakai nilai *_SECRET (lihat cfgValue)
-  TELEGRAM_CHAT_ID      -> npx wrangler secret put TELEGRAM_CHAT_ID_SECRET
+  DISCORD_WEBHOOK_URL   -> sudah tidak dipakai, pakai DISCORD_WEBHOOK_URL_SECRET
+                             (boleh dihapus di dashboard)
+  TELEGRAM_CHAT_ID      -> opsional, hanya untuk notifikasi Telegram ke grup
+                             npx wrangler secret put TELEGRAM_CHAT_ID_SECRET
   AIRTABLE_BASE_ID      ->variabel lama, sudah digantikan AIRTABLE_BASE_ID_SECRET
-                            (boleh dihapus di dashboard, tidak wajib)
+                             (boleh dihapus di dashboard, tidak wajib)
   Worker memakai pola: env.NAMA_SECRET || env.NAMA, jadi nama *_SECRET diprioritaskan.
 
 ENDPOINT
@@ -34,12 +38,48 @@ ENDPOINT
   POST /content                      WAJIB X-Ghothys-Secret (atau Cloudflare Access)
   POST / (order/notify)              WAJIB X-Ghothys-Secret (atau Cloudflare Access)
 
+ENDPOINT PANEL ADMIN (butuh header "Authorization: Bearer <token>", 8 jam)
+  POST   /admin/login                { email, password } -> { data: { token, user } }
+  POST   /admin/logout               hapus token di browser (token stateless, tetap hidup s/d 8 jam)
+  GET    /admin/profile              { email, role }
+  GET    /admin/dashboard            statistik + grafik 7 hari (bucket waktu WIB / UTC+7)
+  GET    /admin/orders?page&limit&search&status&sortBy&sortOrder
+  GET    /admin/orders/<recId>       detail satu order
+  PATCH  /admin/orders/<recId>/status  { status } - status sah: Pending, Diproses, Success,
+                                        Selesai, Cancel, Dibatalkan, Refund
+  Semua /admin/* wajib origin-nya ada di ALLOWED_ORIGINS (tidak boleh 403).
+  Login dibatasi 8x percobaan / 10 menit per ip+email (balas 429).
+
+  Halaman panel: admin/login.html, admin/dashboard.html, admin/orders.html,
+  admin/order-detail.html (butuh ../js/notify-config.js untuk dapat relayUrl).
+
+ROTASI PASSWORD ADMIN
+  Password owner TIDAK disimpan di repo. Sumber nilai saat ini:
+  backend/scripts/seed-admin.js (MASIH plaintext di repo - Ideally dihapus setelah
+  worker siap, lalu pakai langkah di bawah).
+
+  1. Buat hash baru (Node, PBKDF2-SHA256 60.000 iterasi, salt 16 byte, hash 32 byte):
+       node -e "const c=require('crypto'),fs=require('fs');\
+       const p=fs.readFileSync('D:/Proyek & Karya/toko baru/backend/scripts/seed-admin.js','utf8')\
+       .match(/TARGET_ADMIN_PASSWORD\s*=\s*'([^']+)'/)[1];\
+       const s=c.randomBytes(16),h=c.pbkdf2Sync(Buffer.from(p),s,60000,32,'sha256');\
+       const b=x=>x.toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');\
+       process.stdout.write('pbkdf2$60000$'+b(s)+'$'+b(h))" | npx wrangler secret put ADMIN_PASSWORD_HASH
+  2. Ubah TARGET_ADMIN_PASSWORD di seed-admin.js (kalau passwordnya memang diganti).
+  3. Kalau mengganti email admin juga: pakai perintah yang sama untuk ADMIN_EMAIL.
+  PENTING: Cloudflare membatasi iterasi PBKDF2 maksimal 100.000. Di atas itu
+  verifyPassword selalu gagal (login selalu 401) walau hash-nya benar.
+
 ATURAN WAJIB
   1. Selalu deploy dengan --keep-vars.
   2. Jangan pernah print nilai secret ke terminal/chat.
   3. Untuk akses dari domain lain, tambahkan origin-nya ke ALLOWED_ORIGINS,
      lalu deploy ulang (var dashboard tidak otomatis berubah).
+  4. Secret hanya boleh diisi lewat npx wrangler secret put (bukan ditulis di file).
+  5. Backup worker.js sebelum mengubah endpoint, misal:
+     copy worker.js %TEMP%\worker-YYYYMMDD.bak
 
 ROLLBACK
   npx wrangler rollback <version-id-sebelumnya>
+  npx wrangler versions list          (lihat daftar versi)
   Versi sebelum hardening CORS/Access: 88517fa8-2668-4298-a81f-53f1ce495352

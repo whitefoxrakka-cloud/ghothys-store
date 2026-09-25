@@ -3,11 +3,80 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="refresh" content="0; url=./dashboard.html" />
-  <title>Redirect - Ghothys Store</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Detail Order - Ghothys Store</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="css/admin.css" />
+  <script src="../js/notify-config.js"></script>
 </head>
 <body>
-  <p style="font-family:system-ui; margin:24px;">Menu admin sudah digabung ke Monitoring. Buka <a href="./dashboard.html">dashboard</a>.</p>
-  <script>window.location.replace('./dashboard.html');</script>
+  <div class="adm-wrap adm-narrow" style="max-width:720px;">
+    <div class="adm-head">
+      <h1>DETAIL ORDER</h1>
+      <nav>
+        <a href="orders.html" class="adm-btn adm-btn-ghost" id="back-orders">← Daftar Order</a>
+        <button type="button" class="adm-btn adm-btn-danger" id="logout-btn">Keluar</button>
+      </nav>
+    </div>
+
+    <div class="adm-card">
+      <div class="adm-detail-grid">
+        <div class="adm-detail-item">
+          <div class="k">Order ID</div>
+          <div class="v" id="f-order-id">-</div>
+        </div>
+        <div class="adm-detail-item">
+          <div class="k">Status</div>
+          <div class="v" id="f-status">-</div>
+        </div>
+        <div class="adm-detail-item">
+          <div class="k">Nama Pembeli</div>
+          <div class="v" id="f-customer-name">-</div>
+        </div>
+        <div class="adm-detail-item">
+          <div class="k">User ID</div>
+          <div class="v" id="f-uid">-</div>
+        </div>
+        <div class="adm-detail-item">
+          <div class="k">Game</div>
+          <div class="v" id="f-game">-</div>
+        </div>
+        <div class="adm-detail-item">
+          <div class="k">Server</div>
+          <div class="v" id="f-server">-</div>
+        </div>
+        <div class="adm-detail-item">
+          <div class="k">Item</div>
+          <div class="v" id="f-product">-</div>
+        </div>
+        <div class="adm-detail-item">
+          <div class="k">Total</div>
+          <div class="v" id="f-price">-</div>
+        </div>
+        <div class="adm-detail-item">
+          <div class="k">Metode Bayar</div>
+          <div class="v" id="f-payment">-</div>
+        </div>
+        <div class="adm-detail-item">
+          <div class="k">Waktu Masuk</div>
+          <div class="v" id="f-created-at">-</div>
+        </div>
+      </div>
+
+      <div class="adm-actions">
+        <button type="button" class="adm-btn" id="btn-process">Tandai Diproses</button>
+        <button type="button" class="adm-btn adm-btn-ok" id="btn-success">Tandai Success</button>
+        <button type="button" class="adm-btn adm-btn-danger" id="btn-cancel">Batalkan</button>
+      </div>
+
+      <p class="adm-note" style="margin-top:14px;">
+        Status yang dipilih langsung tersimpan di Airtable dan pembeli bisa melihatnya di halaman cek status.
+        Tombol dinonaktifkan otomatis untuk status Success atau Cancel.
+      </p>
+    </div>
+  </div>
+
+  <script src="js/admin-api.js"></script>
+  <script src="js/order-detail.js"></script>
 </body>
 </html>
