@@ -96,9 +96,8 @@
 		].join('');
 	}
 
-	function renderLayout(innerHtml) {
+	function renderFormHtml(innerHtml) {
 		return [
-			'<section class="os-section" id="order-status-section">',
 			'<div class="os-container">',
 			'<div class="os-heading">',
 			'<h2>Cek Status Pesanan</h2>',
@@ -124,27 +123,17 @@
 			'<button type="button" class="os-link-btn" id="os-refresh-toggle">Matikan</button>',
 			'</div>',
 			'</div>',
-			'</div>',
-			'</section>'
+			'</div>'
 		].join('');
 	}
 
-	function findInsertPoint() {
-		var best = document.querySelector('#faq-section, #footer, footer, .faq-section, [id*="faq" i], [class*="faq" i]');
-		if (best) return best;
-		return document.body;
-	}
-
 	function injectSection() {
-		if (document.getElementById('order-status-section')) return;
+		var container = document.getElementById('order-status-section');
+		if (!container) return;
+		if (container.querySelector('.os-section')) return;
 		var placeholder = '<div class="os-placeholder"><div class="os-pc-title">Belum ada form cek status.</div></div>';
-		var sectionHtml = renderLayout(placeholder);
-		var insertPoint = findInsertPoint();
-		if (insertPoint === document.body) {
-			insertPoint.insertAdjacentHTML('beforeend', sectionHtml);
-		} else {
-			insertPoint.insertAdjacentHTML('beforebegin', sectionHtml);
-		}
+		var sectionHtml = renderFormHtml(placeholder);
+		container.innerHTML = sectionHtml;
 	}
 
 	function setBusy(busy) {
