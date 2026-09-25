@@ -814,6 +814,19 @@ async function handleAdminRoute(request, env, url, headers) {
 		return jsonResponse({ success: true, data: { token: token, user: { email: email, role: 'admin' } } }, 200, h);
 	}
 
+	/* Status sesi untuk panel owner di halaman toko.
+	   Sengaja selalu balas 200 (tidak 401) supaya console browser
+	   tidak dipenuhi error merah setiap pengunjung membuka toko.
+	   Tidak membocorkan apa pun: hanya memberitahu apakah pemanggil
+	   sendiri punya sesi admin yang masih sah.
+	   WAJIB dicek SEBELUM gerbang token di bawah. */
+	if (path === '/admin/session' && method === 'GET') {
+		const bearerSesi = (request.headers.get('Authorization') || '').trim().replace(/^Bearer\s+/i, '').trim();
+		const sesi = await verifyJwt(env.JWT_SECRET, bearerSesi || tokenDariCookie(request));
+		const authed = !!(sesi && String(sesi.role || '').toLowerCase() === 'admin');
+		return jsonResponse({ ok: true, data: { authed: authed, email: authed ? sesi.sub : null } }, 200, headers);
+	}
+
 	/* Panel /admin/ memakai header Bearer, halaman toko memakai cookie.
 	   Dua-duanya diterima supaya salah satu diblokir browser tidak
 	   membuat semuanya mati. */
