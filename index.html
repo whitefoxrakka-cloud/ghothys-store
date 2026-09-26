@@ -1476,149 +1476,7 @@
       <!-- ═══════════════════════════════════════════════════════
            MEDIA GALLERY SECTION (like Steam / ArtStation)
            ═══════════════════════════════════════════════════════ -->
-      <div class="comm-section md-section" id="md-section">
-
-       <!-- ── HERO ── -->
-       <div class="md-hero">
-        <div class="md-hero-bg">
-         <div class="md-particle"></div><div class="md-particle"></div><div class="md-particle"></div>
-         <div class="md-particle"></div><div class="md-particle"></div><div class="md-particle"></div>
-         <div class="md-particle"></div><div class="md-particle"></div><div class="md-particle"></div>
-         <div class="md-particle"></div>
-        </div>
-        <div class="md-hero-glow"></div>
-        <div class="md-hero-icon">🎬</div>
-        <div class="md-hero-content">
-         <div class="md-hero-badge">✦ Media Gallery</div>
-         <div class="md-hero-title">Ghothys Media Hub</div>
-         <div class="md-hero-sub">Explore trailers, artwork, devlogs, gameplay, comics, and more from the community and the Ghothys team.</div>
-         <div class="md-hero-actions">
-          <button class="md-btn md-btn-primary" onclick="document.getElementById('md-search-input').focus()">🔍 Browse Media</button>
-          <button class="md-btn md-btn-outline" onclick="alert('📤 Upload modal would open')">📤 Upload</button>
-         </div>
-         <div class="md-hero-meta">
-          <div class="md-hero-stat"><span class="md-hero-stat-label">Total Media</span><span class="md-hero-stat-val purple" id="md-total-media">0</span></div>
-          <div class="md-hero-stat"><span class="md-hero-stat-label">Videos</span><span class="md-hero-stat-val" id="md-total-videos">0</span></div>
-          <div class="md-hero-stat"><span class="md-hero-stat-label">Images</span><span class="md-hero-stat-val gold" id="md-total-images">0</span></div>
-          <div class="md-hero-stat"><span class="md-hero-stat-label">Top Creator</span><span class="md-hero-stat-val green" id="md-top-creator">—</span></div>
-         </div>
-        </div>
-       </div>
-
-       <!-- ── STATS ROW ── -->
-       <div class="md-stats">
-        <div class="md-stat-card"><span class="md-st-icon">🎬</span><span class="md-st-num purple" id="md-total-views">0</span><span class="md-st-label">Total Views</span></div>
-        <div class="md-stat-card"><span class="md-st-icon">❤</span><span class="md-st-num gold" id="md-total-likes">0</span><span class="md-st-label">Total Likes</span></div>
-        <div class="md-stat-card"><span class="md-st-icon">📹</span><span class="md-st-num blue" id="md-total-videos2">0</span><span class="md-st-label">Videos</span></div>
-        <div class="md-stat-card"><span class="md-st-icon">🖼</span><span class="md-st-num" id="md-total-images2">0</span><span class="md-st-label">Images</span></div>
-        <div class="md-stat-card"><span class="md-st-icon">👥</span><span class="md-st-num green" id="md-total-creators">0</span><span class="md-st-label">Creators</span></div>
-        <div class="md-stat-card"><span class="md-st-icon">🏆</span><span class="md-st-num gold" id="md-top-creator2">—</span><span class="md-st-label">Top Creator</span></div>
-       </div>
-
-       <!-- ── FEATURED ── -->
-       <div class="md-block">
-        <div class="md-block-header">
-         <div class="md-block-title"><span>⭐</span> <span class="md-title-glow">Featured Media</span></div>
-         <span class="md-block-link" onclick="setFilter('All')">View All →</span>
-        </div>
-        <div class="md-featured-grid">
-         <div class="md-featured-main" style="cursor:pointer">
-          <img class="md-fm-img" src="https://placehold.co/600x337/0F142D/8B5CF6?text=Featured" alt="Featured" onerror="this.src='https://placehold.co/600x337/0F142D/8B5CF6?text=?'">
-          <div class="md-fm-overlay"></div>
-          <div class="md-fm-content">
-           <div class="md-fm-badges"><span class="md-fm-badge featured">Featured</span></div>
-           <div class="md-fm-title">Loading...</div>
-           <div class="md-fm-meta"><span>👁 —</span><span>❤ —</span><span>—</span></div>
-          </div>
-         </div>
-         <div class="md-featured-side"></div>
-        </div>
-       </div>
-
-       <!-- ── MAIN LAYOUT ── -->
-       <div class="md-main-layout">
-
-        <div class="md-content">
-
-         <!-- ── FILTERS ── -->
-         <div class="md-block" style="padding:0">
-          <div class="md-filter-bar">
-           <div class="md-filter-search">
-            <span class="md-fs-icon">🔍</span>
-            <input type="text" id="md-search-input" placeholder="Search media, creators, tags..." autocomplete="off">
-           </div>
-           <select class="md-filter-select" id="md-sort-type">
-            <option value="all">All Types</option>
-            <option value="videos">Videos</option>
-            <option value="images">Images</option>
-            <option value="artwork">Artwork</option>
-            <option value="gameplay">Gameplay</option>
-            <option value="devlog">Devlog</option>
-            <option value="design">Design</option>
-           </select>
-           <select class="md-filter-select" id="md-sort-order">
-            <option value="newest">Newest</option>
-            <option value="oldest">Oldest</option>
-            <option value="popular">Most Popular</option>
-            <option value="name">Name A-Z</option>
-           </select>
-          </div>
-          <div class="md-divider"></div>
-          <div class="md-filter-tabs" id="md-filter-tabs"></div>
-         </div>
-
-         <!-- ── GRID ── -->
-         <div class="md-search-count" id="md-search-count"></div>
-         <div class="md-grid" id="md-grid"></div>
-
-         <!-- ── NO RESULT ── -->
-         <div class="md-no-result" id="md-no-result">
-          <div class="md-no-result-icon">📭</div>
-          <div class="md-no-result-title">No media found</div>
-          <div class="md-no-result-desc">Try a different filter or search term.</div>
-         </div>
-
-         <!-- ── CREATOR SPOTLIGHT ── -->
-         <div class="md-block">
-          <div class="md-block-header">
-           <div class="md-block-title"><span>🌟</span> <span class="md-title-glow">Creator Spotlight</span></div>
-           <span class="md-block-link">Meet All →</span>
-          </div>
-          <div class="md-spotlight-grid" id="md-creator-grid"></div>
-         </div>
-
-         <!-- ── TRENDING ── -->
-         <div class="md-block">
-          <div class="md-block-header">
-           <div class="md-block-title"><span>🔥</span> <span class="md-title-glow">Trending Now</span></div>
-           <span class="md-block-link">View All →</span>
-          </div>
-          <div class="md-trending-wrap">
-           <div class="md-trending-track"></div>
-          </div>
-         </div>
-
-        </div><!-- /md-content -->
-
-        <!-- ── SIDEBAR ── -->
-        <div class="md-sidebar">
-         <div class="md-side-card">
-          <h4>📌 Recent Uploads</h4>
-          <div id="md-recent-list"></div>
-         </div>
-         <div class="md-side-card">
-          <h4>🔥 Popular This Week</h4>
-          <div id="md-popular-list"></div>
-         </div>
-         <div class="md-side-card">
-          <h4>📂 Categories</h4>
-          <div id="md-categories-list"></div>
-         </div>
-        </div>
-
-       </div><!-- /md-main-layout -->
-
-      </div><!-- /md-section -->
+      md-section -->
 
       <!-- ─── LIGHTBOX ─── -->
       <div class="md-lightbox" id="md-lightbox">
@@ -1642,165 +1500,16 @@
       </div>
 
       <!-- ─── CHAT AREA (for JS rendering) ─── -->
-       <div class="comm-chat-area" id="community-chat-area"></div>
-
-     <!-- ─── INPUT BAR ─── -->
-     <div class="comm-input-bar">
-      <button class="input-tool-btn" title="Emoji" data-action="toggle-emoji">😊</button>
-      <button class="input-tool-btn" title="Upload Foto"><i data-lucide="camera" style="width:16px;height:16px"></i></button>
-      <button class="input-tool-btn" title="Upload Video"><i data-lucide="video" style="width:16px;height:16px"></i></button>
-      <button class="input-tool-btn" title="Attachment"><i data-lucide="paperclip" style="width:16px;height:16px"></i></button>
-      <input type="text" id="comm-message-input" placeholder="Ketik pesan...">
-      <button data-action="send-community-message" class="gold-btn" style="padding:0.45rem 0.85rem">
-       <i data-lucide="send" style="width:14px;height:14px"></i>
-      </button>
+        <!-- ─── INPUT BAR ─── -->
      </div>
-
-    </div>
    </main>
 
    <!-- ═══ RIGHT SIDEBAR ═══ -->
-   <aside class="community-sidebar-right">
-
-    <!-- ─── ONLINE MEMBERS ─── -->
-    <div class="comm-panel-card">
-     <h4 class="comm-panel-title"><span class="title-icon">🟢</span> Online Members <span style="margin-left:auto;font-weight:400;color:var(--text-dim)">12</span></h4>
-     <div class="online-member">
-      <div class="online-member-avatar">👑<span class="status-dot online"></span></div>
-      <div class="online-member-info">
-       <div class="om-name">Ashira <span class="role-owner" style="font-size:0.5rem;padding:1px 5px">Owner</span></div>
-       <div class="om-status"><span class="voice-indicator">🔊</span> Voice Chat</div>
-      </div>
-     </div>
-     <div class="online-member">
-      <div class="online-member-avatar">🛡<span class="status-dot online"></span></div>
-      <div class="online-member-info">
-       <div class="om-name">RyuKen <span class="role-admin" style="font-size:0.5rem;padding:1px 5px">Admin</span></div>
-       <div class="om-status">🎮 Playing Mobile Legends</div>
-      </div>
-     </div>
-     <div class="online-member">
-      <div class="online-member-avatar">⭐<span class="status-dot online"></span></div>
-      <div class="online-member-info">
-       <div class="om-name">StarGamer <span class="role-platinum" style="font-size:0.5rem;padding:1px 5px">Platinum</span></div>
-       <div class="om-status"><span class="typing-indicator">✍</span> Typing...</div>
-      </div>
-     </div>
-     <div class="online-member">
-      <div class="online-member-avatar">💎<span class="status-dot online"></span></div>
-      <div class="online-member-info">
-       <div class="om-name">DiamondX <span class="role-vip" style="font-size:0.5rem;padding:1px 5px">VIP</span></div>
-       <div class="om-status">🎮 Playing Genshin Impact</div>
-      </div>
-     </div>
-     <div class="online-member">
-      <div class="online-member-avatar">👤<span class="status-dot idle"></span></div>
-      <div class="online-member-info">
-       <div class="om-name">NewPlayer01 <span class="role-member" style="font-size:0.5rem;padding:1px 5px">Member</span></div>
-       <div class="om-status">Idle</div>
-      </div>
-     </div>
-    </div>
-
-    <!-- ─── EVENT ─── -->
-    <div class="comm-panel-card event-card-mini">
-     <h4 class="comm-panel-title"><span class="title-icon">🎉</span> Event Terdekat</h4>
-     <div class="event-title">Giveaway 1000 Diamond</div>
-     <div class="event-date">2 Juli 2026 • 20:00 WIB</div>
-     <div class="event-countdown-mini">
-      <div class="cd-item"><span class="cd-num">14</span><span class="cd-label">Hari</span></div>
-      <div class="cd-item"><span class="cd-num">08</span><span class="cd-label">Jam</span></div>
-      <div class="cd-item"><span class="cd-num">42</span><span class="cd-label">Menit</span></div>
-      <div class="cd-item"><span class="cd-num">15</span><span class="cd-label">Detik</span></div>
-     </div>
-     <button class="event-join-btn">Join Event</button>
-     <div class="event-meta-mini">
-      <span>🎁 Reward: 1000 Diamond</span>
-      <span>👥 48 Participants</span>
-     </div>
-     <div style="margin-top:6px">
-      <div style="display:flex;align-items:center;gap:6px;font-size:0.6rem;color:var(--text-dim)">
-       <span>Progress</span>
-       <div class="progress-track" style="flex:1;height:4px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden">
-        <div class="progress-fill" style="width:68%;height:100%;background:linear-gradient(90deg,var(--neon-purple),var(--gold));border-radius:4px"></div>
-       </div>
-       <span style="font-weight:700;color:var(--gold)">68%</span>
-      </div>
-     </div>
-    </div>
-
+   !-- ─── EVENT ─── -->
     <!-- ─── TOP CUSTOMER ─── -->
-    <div class="comm-panel-card">
-     <h4 class="comm-panel-title"><span class="title-icon">🏆</span> Top Customer</h4>
-     <div class="top-customer-item">
-      <span class="rank-medal">🥇</span>
-      <div class="tc-avatar">💎</div>
-      <span class="tc-name">DiamondX</span>
-      <span class="tc-amount">Rp 2.5jt</span>
-     </div>
-     <div class="top-customer-item">
-      <span class="rank-medal">🥈</span>
-      <div class="tc-avatar">🎮</div>
-      <span class="tc-name">ProGamer99</span>
-      <span class="tc-amount">Rp 1.8jt</span>
-     </div>
-     <div class="top-customer-item">
-      <span class="rank-medal">🥉</span>
-      <div class="tc-avatar">⭐</div>
-      <span class="tc-name">StarGamer</span>
-      <span class="tc-amount">Rp 1.2jt</span>
-     </div>
-    </div>
-
     <!-- ─── STATISTICS ─── -->
-    <div class="comm-panel-card">
-     <h4 class="comm-panel-title"><span class="title-icon">📊</span> Statistik</h4>
-     <div class="stats-grid">
-      <div class="stat-item">
-       <div class="stat-number" id="stat-members">1,247</div>
-       <div class="stat-label">Members</div>
-      </div>
-      <div class="stat-item">
-       <div class="stat-number green" id="stat-online">12</div>
-       <div class="stat-label">Online</div>
-      </div>
-      <div class="stat-item">
-       <div class="stat-number gold" id="stat-posts">48</div>
-       <div class="stat-label">Posts Today</div>
-      </div>
-      <div class="stat-item">
-       <div class="stat-number purple" id="stat-events">5</div>
-       <div class="stat-label">Events</div>
-      </div>
-      <div class="stat-item">
-       <div class="stat-number pink" id="stat-giveaway">3</div>
-       <div class="stat-label">Giveaway</div>
-      </div>
-      <div class="stat-item">
-       <div class="stat-number blue" id="stat-topup">Rp 8.5jt</div>
-       <div class="stat-label">Total Top Up</div>
-      </div>
-     </div>
-    </div>
-
     <!-- ─── ROLES ─── -->
-    <div class="comm-panel-card">
-     <h4 class="comm-panel-title"><span class="title-icon">🎖</span> Roles</h4>
-     <div class="roles-flex">
-      <span class="role-pill role-owner">👑 Owner</span>
-      <span class="role-pill role-developer">💻 Developer</span>
-      <span class="role-pill role-moderator">🛡 Mod</span>
-      <span class="role-pill role-admin">⚡ Admin</span>
-      <span class="role-pill role-vip">💎 VIP</span>
-      <span class="role-pill role-diamond">💠 Diamond</span>
-      <span class="role-pill role-platinum">⭐ Platinum</span>
-      <span class="role-pill role-gold">🏅 Gold</span>
-      <span class="role-pill role-member">👤 Member</span>
-      <span class="role-pill role-newbie">🌱 Newbie</span>
-     </div>
-    </div>
-
-   </aside>
+    /aside>
   </div>
   </div><!-- Footer -->
   <footer id="site-footer" class="bg-gray-800 text-white w-full py-12">
@@ -2312,8 +2021,7 @@
                </div>
                <div class="rounded-lg p-4" style="background:var(--bg-primary);">
                   <div class="text-sm">Community Activity</div>
-                  <div id="owner-community-activity" class="text-lg">0</div>
-               </div>
+                            </div>
                <div class="rounded-lg p-4" style="background:var(--bg-primary);">
                   <div class="text-sm">Latest Announcement</div>
                   <div id="owner-latest-announcement" class="text-lg">—</div>
