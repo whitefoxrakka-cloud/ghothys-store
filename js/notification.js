@@ -261,42 +261,150 @@
 	}
 
 	/**
-	 * Send to email via Formspree
+	 * Send order notification email via Worker (SendGrid)
 	 * @param {Object} order Order object
-	 * @param {string} formspreeId Formspree form ID (e.g. "xxxxxabc")
 	 * @returns {Promise<Object>} Result
 	 */
-	async function sendToEmail(order, formspreeId) {
-		if (!formspreeId) {
-			return { success: false, skipped: true, channel: 'email', reason: 'no formspree id configured' };
+	async function sendOrderEmailViaWorker(order) {
+		const cfg = (window.GHOTHYS_NOTIFY_CONFIG) ? window.GHOTHYS_NOTIFY_CONFIG : {};
+		const relayUrl = cfg.relayUrl;
+		if (!relayUrl) {
+			return { success: false, skipped: true, channel: 'email', reason: 'no relay URL configured' };
 		}
 		try {
-			const endpoint = 'https://formspree.io/f/' + formspreeId;
-			const payload = {
-				_subject: 'Order Baru ' + order.id,
-				order_id: order.id,
-				game: order.game,
-				uid: order.uid,
-				server: order.server,
-				item: order.item,
-				price: order.price ? ('Rp ' + Number(order.price).toLocaleString('id-ID')) : '-',
-				payment: order.payment,
-				customer: order.customerName || '-',
-				time: order.timestamp,
-				message: formatOrderSummary(order)
-			};
-			const response = await fetch(endpoint, {
+			const html = buildOrderEmailHtml(order);
+			const text = formatOrderSummary(order);
+			const response = await fetch(relayUrl.replace(/\/content$/, '') + '/admin/send-email', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-				body: JSON.stringify(payload)
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					to: cfg.adminEmail || '',
+					subject: '🔔 Order Baru #' + order.id,
+					html: html,
+					text: text
+				})
 			});
-			if (!response.ok) throw new Error('Formspree HTTP ' + response.status);
-			console.log('[EMAIL SENT]', order.id);
+			if (!response.ok) {
+				const err = await response.json();
+				throw new Error(err.message || 'Worker HTTP ' + response.status);
+			}
+			console.log('[EMAIL SENT via Worker]', order.id);
 			return { success: true, channel: 'email' };
 		} catch (error) {
 			console.error('[EMAIL FAILED]', order.id, error);
 			return { success: false, channel: 'email', error: error.message };
 		}
+	}
+
+	/**
+	 * Send custom email via Worker (for admin dashboard)
+	 * @param {Object} params { to, subject, html, text }
+	 * @returns {Promise<Object>} Result
+	 */
+	window.sendEmailViaWorker = async function(params) {
+		const cfg = (window.GHOTHYS_NOTIFY_CONFIG) ? window.GHOTHYS_NOTIFY_CONFIG : {};
+		const relayUrl = cfg.relayUrl;
+		if (!relayUrl) {
+			return { success: false, error: 'Relay URL tidak dikonfigurasi' };
+		}
+		if (!params?.to || !params?.subject || (!params?.html && !params?.text)) {
+			return { success: false, error: 'to, subject, dan html/text wajib diisi' };
+		}
+		try {
+			const response = await fetch(relayUrl.replace(/\/content$/, '') + '/admin/send-email', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(params)
+			});
+			const result = await response.json();
+			if (!response.ok) throw new Error(result.message || 'Worker HTTP ' + response.status);
+			return { success: true };
+		} catch (error) {
+			console.error('[EMAIL FAILED]', error);
+			return { success: false, error: error.message };
+		}
+	};
+
+	/**
+	 * Build HTML email for order notification
+	 */
+	function buildOrderEmailHtml(order) {
+		return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; max-width: 600px; margin: 0 auto; padding: 20px; }
+    .container { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .header { background: linear-gradient(135deg, #a855f7, #7c3aed); color: white; padding: 24px; text-align: center; }
+    .header h1 { margin: 0; font-size: 24px; font-weight: 800; }
+    .content { padding: 24px; }
+    .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+    .detail-label { font-weight: 600; color: #6b7280; }
+    .detail-value { font-weight: 500; }
+    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-diproses { background: #dbeafe; color: #1e40af; }
+    .status-success { background: #dcfce7; color: #166534; }
+    .status-cancel { background: #fee2e2; color: #991b1b; }
+    .footer { background: #f8fafc; padding: 16px; text-align: center; font-size: 12px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔔 Order Baru Ghothys Store</h1>
+    </div>
+    <div class="content">
+      <div class="detail-row">
+        <span class="detail-label">Order ID</span>
+        <span class="detail-value">${order.id}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Game</span>
+        <span class="detail-value">${order.game}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Item</span>
+        <span class="detail-value">${order.item || order.product || '-'}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Harga</span>
+        <span class="detail-value">${order.price ? ('Rp ' + Number(order.price).toLocaleString('id-ID')) : '-'}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Metode Bayar</span>
+        <span class="detail-value">${order.payment}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">User ID</span>
+        <span class="detail-value">${order.uid}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Server</span>
+        <span class="detail-value">${order.server || '-'}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Pembeli</span>
+        <span class="detail-value">${order.customerName || '-'}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Waktu</span>
+        <span class="detail-value">${order.timestamp}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Status</span>
+        <span class="detail-value"><span class="status-badge status-${(order.status || 'pending').toLowerCase()}">${order.status || 'Pending'}</span></span>
+      </div>
+    </div>
+    <div class="footer">
+      Ghothys Store • Dashboard Admin<br>
+      <a href="${window.location.origin}/admin/orders.html" style="color:#a855f7;">Lihat di Dashboard</a>
+    </div>
+  </div>
+</body>
+</html>`;
 	}
 
 	/**
@@ -355,8 +463,10 @@
 			results.push(await sendToDiscord(order, cfg.discordWebhook));
 			results.push(await sendToTelegram(order, cfg.telegramRelay));
 		}
-		// Email via Formspree works alongside the relay (form ID is public-safe)
-		results.push(await sendToEmail(order, cfg.formspreeId));
+		// Email via Worker (SendGrid) - runs alongside relay
+		if (cfg.relayUrl && cfg.adminEmail) {
+			results.push(await sendOrderEmailViaWorker(order));
+		}
 		const delivered = results.filter(r => r.success).length;
 		const skipped = results.filter(r => r.skipped).length;
 		console.log(`[NOTIFY] order ${order.id}: delivered=${delivered} skipped=${skipped} results=`, results);

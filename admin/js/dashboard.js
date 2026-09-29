@@ -20,6 +20,60 @@
     return window.AdminAPI.adminFetch('/admin/orders?limit=500', { method: 'GET' });
   }
 
+  async function sendTestEmail() {
+    const btn = document.getElementById('btn-test-email');
+    if (!btn) return;
+    try {
+      btn.disabled = true;
+      btn.textContent = 'Mengirim...';
+      const cfg = (window.GHOTHYS_NOTIFY_CONFIG) ? window.GHOTHYS_NOTIFY_CONFIG : {};
+      const relayUrl = cfg.relayUrl;
+      if (!relayUrl || !window.sendEmailViaWorker) {
+        throw new Error('Relay URL atau fungsi email tidak tersedia');
+      }
+      const result = await window.sendEmailViaWorker({
+        to: cfg.adminEmail || '',
+        subject: '🧪 Test Email - Ghothys Store Dashboard',
+        html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#1f2937;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+    <div style="background:linear-gradient(135deg,#a855f7,#7c3aed);color:white;padding:24px;text-align:center;">
+      <h1 style="margin:0;font-size:24px;font-weight:800;">🧪 Test Email Ghothys Store</h1>
+    </div>
+    <div style="padding:24px;">
+      <p>Halo,</p>
+      <p>Ini adalah email test dari <strong>Ghothys Store Dashboard</strong>.</p>
+      <p>Jika Anda menerima email ini, berarti integrasi <strong>SendGrid via Cloudflare Worker</strong> sudah berfungsi dengan benar.</p>
+      <div style="background:#f8fafc;padding:16px;border-radius:8px;margin:16px 0;font-size:13px;color:#6b7280;">
+        Waktu: ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB<br>
+        Environment: ${window.location.hostname}
+      </div>
+      <p>Salam,<br><strong>Ghothys Store System</strong></p>
+    </div>
+    <div style="background:#f8fafc;padding:16px;text-align:center;font-size:12px;color:#94a3b8;">
+      Ghothys Store • Dashboard Admin
+    </div>
+  </div>
+</body>
+</html>`,
+        text: 'Test Email Ghothys Store\n\nIni adalah email test dari Ghothys Store Dashboard.\nJika Anda menerima email ini, integrasi SendGrid via Cloudflare Worker sudah berfungsi.\n\nWaktu: ' + new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }) + ' WIB'
+      });
+      if (result.success) {
+        window.showToast('✅ Test Email', 'Email test terkirim ke ' + cfg.adminEmail);
+      } else {
+        throw new Error(result.error || 'Gagal kirim email');
+      }
+    } catch (err) {
+      window.showErrorToast('Gagal Kirim Test Email', err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Kirim Test Email';
+    }
+  }
+
   function formatDate(d) {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -493,6 +547,9 @@
     if (applyFilterBtn) applyFilterBtn.addEventListener('click', applyFilters);
     if (resetFilterBtn) resetFilterBtn.addEventListener('click', resetFilters);
     if (exportCsvBtn) exportCsvBtn.addEventListener('click', exportCSV);
+
+    const testEmailBtn = document.getElementById('btn-test-email');
+    if (testEmailBtn) testEmailBtn.addEventListener('click', sendTestEmail);
 
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async () => {

@@ -69,5 +69,9 @@ window.GHOTHYS_NOTIFY_CONFIG = {
 
 	// Email pemilik toko (hanya email ini yang bisa lihat & buka Owner Panel).
 	// Harus SAMA dengan email yang dipakai login admin (ADMIN_EMAIL di Worker).
-	ownerEmail: 'whitefox.rakka@gmail.com'
+	ownerEmail: 'whitefox.rakka@gmail.com',
+
+	// Email untuk notifikasi order baru (bisa sama dengan ownerEmail atau berbeda).
+	// Digunakan oleh Worker SendGrid untuk kirim email notifikasi ke admin.
+	adminEmail: 'whitefox.rakka@gmail.com'
 };
