@@ -18,6 +18,24 @@
     const pf = document.getElementById('topup-form');
     if(pv) pv.style.display='none';
     if(pf) pf.style.display='';
+
+    /* Order baru dimulai, jadi kode promo dari order sebelumnya
+       tidak boleh terbawa. */
+    if(window.Promo && typeof window.Promo.lepasAktif === 'function'){
+      window.Promo.lepasAktif();
+    }
+    const inputPromo = document.getElementById('promo-input');
+    if(inputPromo) inputPromo.value='';
+    const statusPromo = document.getElementById('promo-status');
+    if(statusPromo){ statusPromo.textContent=''; statusPromo.className='promo-status'; }
+    const ringkasPromo = document.getElementById('promo-ringkas');
+    if(ringkasPromo){
+      while(ringkasPromo.firstChild) ringkasPromo.removeChild(ringkasPromo.firstChild);
+      ringkasPromo.className='promo-ringkas';
+    }
+    const tombolLepas = document.getElementById('promo-hapus-btn');
+    if(tombolLepas) tombolLepas.style.display='none';
+
     document.getElementById('topup-modal').style.display='block';document.body.style.overflow='hidden';
   };
 
@@ -160,6 +178,31 @@
         window.currentUser.points -= neededPoints;
       }
 
+      // Kode promo / voucher (fase 4).
+      // Diterapkan setelah diskon paket dan diskon Points, supaya
+      // potongan voucher dihitung dari total yang sudah berkurang.
+      let voucherDipakai = null;
+      if (window.Promo && typeof window.Promo.ambilAktif === 'function') {
+        const voucherAktif = window.Promo.ambilAktif();
+        if (voucherAktif) {
+          const cekVoucher = window.Promo.terapkan(voucherAktif.kode, finalPrice, {
+            payment: payment,
+          });
+          if (!cekVoucher.ok) {
+            // Kode jadi tidak berlaku, misalnya metode bayar diganti
+            // ke Points atau paket yang dipilih berubah.
+            window.Promo.lepasAktif();
+            window.showErrorToast('Kode Promo Tidak Berlaku', cekVoucher.error);
+            console.log('==========================');
+            console.log('[FLOW STOPPED] promo tidak berlaku', cekVoucher.error);
+            console.log('==========================');
+            return;
+          }
+          finalPrice = cekVoucher.sisaBayar;
+          voucherDipakai = cekVoucher;
+        }
+      }
+
       const orderDataPreview = {
         customerName: window.currentUser.nickname || window.currentUser.name,
         game: window.currentGame ? window.currentGame.name : undefined,
@@ -168,6 +211,9 @@
         product: pkg ? pkg.name : undefined,
         payment: payment,
         price: finalPrice !== undefined ? Math.floor(finalPrice) : undefined,
+        promoCode: voucherDipakai ? voucherDipakai.kode : '',
+        promoPotong: voucherDipakai ? voucherDipakai.potong : 0,
+        promoCatatan: voucherDipakai ? voucherDipakai.catatan : '',
       };
 
       // ==========================
@@ -227,6 +273,9 @@
         product: orderDataPreview.product,
         price: orderDataPreview.price,
         payment: orderDataPreview.payment,
+        promoCode: orderDataPreview.promoCode,
+        promoPotong: orderDataPreview.promoPotong,
+        promoCatatan: orderDataPreview.promoCatatan,
       };
 
       console.log('[STEP 4] Endpoint:', endpoint);
@@ -294,10 +343,18 @@
           payment_method: payment,
           status: 'Pending',
           points_earned: earned,
+          promo_code: voucherDipakai ? voucherDipakai.kode : '',
+          promo_potong: voucherDipakai ? voucherDipakai.potong : 0,
           created_at: new Date().toISOString()
         });
         window.saveTransactions(tx);
         console.log('[STEP 6] Transaction saved');
+
+        // Kode promo sudah dipakai untuk order ini, jangan ikut
+        // terbawa ke order berikutnya.
+        if (window.Promo && typeof window.Promo.lepasAktif === 'function') {
+          window.Promo.lepasAktif();
+        }
 
         // Show payment instructions (keeps modal open with steps + WA confirm)
         if(payment === 'Points'){
@@ -314,7 +371,10 @@
           product: pkg ? pkg.name : '',
           uid: userId,
           server: serverId,
-          customerName: window.currentUser.nickname || window.currentUser.name || ''
+          customerName: window.currentUser.nickname || window.currentUser.name || '',
+          promoCode: voucherDipakai ? voucherDipakai.kode : '',
+          promoPotong: voucherDipakai ? voucherDipakai.potong : 0,
+          promoCatatan: voucherDipakai ? voucherDipakai.catatan : ''
         });
 
         window.updateUI();
@@ -366,6 +426,10 @@
       'User ID  : ' + (info.uid || '-')
     ];
     if(info.server) lines.push('Server   : ' + info.server);
+    if(info.promoCode){
+      lines.push('Promo    : ' + info.promoCode + ' (potong Rp ' +
+        Number(info.promoPotong || 0).toLocaleString('id-ID') + ')');
+    }
     lines.push(
       'Total    : ' + total,
       'Bayar    : ' + (info.payment || '-') + ' a.n. ' + (ownerName || store),
@@ -383,7 +447,8 @@
     const cfg = (window.GHOTHYS_NOTIFY_CONFIG) ? window.GHOTHYS_NOTIFY_CONFIG : {};
     const store = cfg.storeName || 'Ghothys Store';
     const total = 'Rp ' + Number(info.total || 0).toLocaleString('id-ID');
-    return [
+
+    const baris = [
       'Halo ' + store + ', saya sudah melakukan pembayaran.',
       '',
       'Order ID : ' + (info.orderId || '-'),
@@ -391,11 +456,21 @@
       'Game     : ' + (info.game || '-'),
       'Item     : ' + (info.product || '-'),
       'User ID  : ' + (info.uid || '-') + (info.server ? ' (Server ' + info.server + ')' : ''),
+    ];
+
+    if(info.promoCode){
+      baris.push('Promo    : ' + info.promoCode + ' (potong Rp ' +
+        Number(info.promoPotong || 0).toLocaleString('id-ID') + ')');
+    }
+
+    baris.push(
       'Total    : ' + total,
       'Metode   : ' + (info.payment || '-'),
       '',
       'Berikut bukti transfer saya:'
-    ].join('\n');
+    );
+
+    return baris.join('\n');
   }
 
   function copyText(text, okTitle, okMessage){
@@ -442,6 +517,18 @@
     setText('pay-method', info.payment);
     setText('pay-account', account);
     setText('pay-account-owner', 'a.n. ' + name);
+
+    // Baris potongan promo, disembunyikan kalau tidak memakai kode.
+    const barisPromo = document.getElementById('pay-promo');
+    if(barisPromo){
+      if(info.promoCode){
+        barisPromo.style.display = 'flex';
+        setText('pay-promo-label', 'Promo ' + info.promoCode);
+        setText('pay-promo-potong', '- Rp ' + Number(info.promoPotong || 0).toLocaleString('id-ID'));
+      } else {
+        barisPromo.style.display = 'none';
+      }
+    }
 
     const detailText = formatOrderDetail(info, account, name, cfg);
     const confirmText = buildConfirmMessage(info);

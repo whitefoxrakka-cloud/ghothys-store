@@ -1,0 +1,205 @@
+/* ============================================================
+   PROMO / VOUCHER (fase 4)
+   Kotak kode promo di dalam formulir top up.
+   ============================================================ */
+
+.promo-kotak {
+  padding: 16px;
+  border: 2px dashed var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-card);
+}
+
+.promo-judul {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.promo-petunjuk {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.promo-baris {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.promo-input {
+  flex: 1 1 180px;
+  min-width: 0;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.18s ease;
+}
+
+.promo-input::placeholder {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.promo-input:focus {
+  border-color: #a855f7;
+}
+
+.promo-tombol {
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 800;
+  border: 2px solid #a855f7;
+  border-radius: 10px;
+  background: #a855f7;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.promo-tombol:hover {
+  background: #9333ea;
+  border-color: #9333ea;
+}
+
+.promo-tombol:active {
+  transform: translateY(1px);
+}
+
+.promo-tombol.lembut {
+  background: transparent;
+  color: #a855f7;
+}
+
+.promo-tombol.lembut:hover {
+  background: rgba(168, 85, 247, 0.12);
+  border-color: #9333ea;
+}
+
+/* Balasan setelah kode dicoba. */
+.promo-status {
+  margin: 10px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.promo-status.buruk {
+  color: #ef4444;
+}
+
+.promo-status.bagus {
+  color: #22c55e;
+}
+
+/* Ringkasan kode yang sedang dipakai. */
+.promo-ringkas {
+  display: none;
+  margin: 10px 0 0;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 9px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: #22c55e;
+}
+
+.promo-ringkas.aktif {
+  display: block;
+}
+
+.promo-ringkas-kode {
+  letter-spacing: 0.5px;
+}
+
+.promo-ringkas-potong {
+  color: #22c55e;
+}
+
+/* Daftar kode bawaan, dipakai untuk pengujian. */
+.promo-daftar {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.promo-daftar-judul {
+  margin: 12px 0 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.promo-daftar-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  font-size: 11px;
+  border-radius: 8px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+}
+
+.promo-daftar-kode {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #a855f7;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.promo-daftar-kode:hover {
+  text-decoration: underline;
+}
+
+.promo-daftar-keterangan {
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+@media (max-width: 480px) {
+  .promo-baris {
+    flex-direction: column;
+  }
+
+  .promo-tombol {
+    width: 100%;
+  }
+
+  .promo-daftar-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+  }
+
+  .promo-daftar-keterangan {
+    text-align: left;
+  }
+}

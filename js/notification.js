@@ -117,6 +117,12 @@
 			   ditampilkan sebagai "Tanpa akun" - lihat riwayat.js. */
 			ownerEmail: (window.currentUser && window.currentUser.email) || orderData.ownerEmail || '',
 			ownerUsername: (window.currentUser && window.currentUser.username) || orderData.ownerUsername || '',
+			/* Fase 4: kode promo yang dipakai beserta nilainya, supaya
+			   admin dan pembeli bisa melihat potongan yang sudah
+			   diterapkan. Kosong kalau order tanpa kode promo. */
+			promoCode: String(orderData.promoCode || '').trim(),
+			promoPotong: Number(orderData.promoPotong) || 0,
+			promoCatatan: String(orderData.promoCatatan || '').trim(),
 			createdAt: new Date().toISOString(),
 			timestamp: generateTimestamp(),
 			status: 'Pending'
@@ -152,6 +158,13 @@
 			'--------------------------------',
 			'Ghothys Store'
 		];
+
+		if (order.promoCode) {
+			lines.splice(8, 0,
+				`Promo    : ${order.promoCode} (potong Rp ${Number(order.promoPotong || 0).toLocaleString('id-ID')})`
+			);
+		}
+
 		return lines.join('\n');
 	}
 
