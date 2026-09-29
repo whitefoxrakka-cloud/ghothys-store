@@ -467,3 +467,28 @@ textarea:focus {
   background-color: #1e293b;
   color: #a855f7;
 }
+
+/* Jumbotron full-width override */
+.jumbotron-custom {
+  max-width: none !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  padding: 5rem 2rem !important;
+}
+
+.jumbotron-content {
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .jumbotron-custom {
+    padding: 3rem 1.5rem !important;
+  }
+  .jumbotron-title {
+    font-size: 2rem !important;
+  }
+  .jumbotron-character-wrapper {
+    display: none;
+  }
+}
