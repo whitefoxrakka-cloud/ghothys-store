@@ -27,14 +27,15 @@
       btn.disabled = true;
       btn.textContent = 'Mengirim...';
       const cfg = (window.GHOTHYS_NOTIFY_CONFIG) ? window.GHOTHYS_NOTIFY_CONFIG : {};
-      const relayUrl = cfg.relayUrl;
-      if (!relayUrl || !window.sendEmailViaWorker) {
-        throw new Error('Relay URL atau fungsi email tidak tersedia');
+      if (!cfg.relayUrl || !cfg.adminEmail) {
+        throw new Error('Relay URL atau adminEmail tidak dikonfigurasi');
       }
-      const result = await window.sendEmailViaWorker({
-        to: cfg.adminEmail || '',
-        subject: '🧪 Test Email - Ghothys Store Dashboard',
-        html: `
+      const result = await window.AdminAPI.adminFetch('/admin/send-email', {
+        method: 'POST',
+        body: JSON.stringify({
+          to: cfg.adminEmail,
+          subject: '🧪 Test Email - Ghothys Store Dashboard',
+          html: `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
@@ -59,12 +60,13 @@
   </div>
 </body>
 </html>`,
-        text: 'Test Email Ghothys Store\n\nIni adalah email test dari Ghothys Store Dashboard.\nJika Anda menerima email ini, integrasi SendGrid via Cloudflare Worker sudah berfungsi.\n\nWaktu: ' + new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }) + ' WIB'
+          text: 'Test Email Ghothys Store\n\nIni adalah email test dari Ghothys Store Dashboard.\nJika Anda menerima email ini, integrasi SendGrid via Cloudflare Worker sudah berfungsi.\n\nWaktu: ' + new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }) + ' WIB'
+        })
       });
       if (result.success) {
         window.showToast('✅ Test Email', 'Email test terkirim ke ' + cfg.adminEmail);
       } else {
-        throw new Error(result.error || 'Gagal kirim email');
+        throw new Error(result.message || 'Gagal kirim email');
       }
     } catch (err) {
       window.showErrorToast('Gagal Kirim Test Email', err.message);
