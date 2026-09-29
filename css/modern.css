@@ -451,3 +451,19 @@ textarea:focus {
   background: linear-gradient(90deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.03));
   border-color: rgba(34, 197, 94, 0.3);
 }
+
+/* Jumbotron dark mode fix */
+[data-theme="dark"] .jumbotron-custom {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(236, 72, 153, 0.25));
+  color: #f1f5f9;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .jumbotron-desc {
+  color: rgba(241, 245, 249, 0.85);
+}
+
+[data-theme="dark"] .jumbotron-btn-outline:hover {
+  background-color: #1e293b;
+  color: #a855f7;
+}
