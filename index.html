@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="id"><head><script>window["__codeletBootstrap__"]=JSON.parse('{"A":"A","B":"20260630-05-8900874"}');</script><!-- telemetry SDK removed for local dev -->
  <meta charset="UTF-8">
  <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -35,7 +35,7 @@
  <link rel="stylesheet" href="css/style.css?v=20260925d">
  <link rel="stylesheet" href="css/animations.css?v=20260925d">
  <link rel="stylesheet" href="css/navigation.css?v=20260925d">
- <link rel="stylesheet" href="css/home.css?v=20260929b">
+ <link rel="stylesheet" href="css/home.css?v=20260929a">
   <link rel="stylesheet" href="css/giveaway.css?v=20260925d">
    <link rel="stylesheet" href="css/event.css?v=20260925d">
     <link rel="stylesheet" href="css/announcement.css?v=20260925d">
@@ -111,7 +111,7 @@
    <div class="max-w-7xl mx-auto px-4">
    <h2 class="text-3xl font-bold mb-8" style="color:var(--text-primary)">Game Populer</h2>
    <div class="mb-6">
-    <input type="text" id="search-katalog" placeholder="Cari game atau paket - mis. diamond, free fire, netflix, spotify..." class="w-full px-4 py-2.5 rounded-lg border-2 text-sm focus:outline-none focus:border-purple-500" style="border-color:var(--border-color);background:var(--bg-primary);color:var(--text-primary);">
+    <input type="text" id="search-katalog" placeholder="Cari game atau paket — mis. diamond, free fire, netflix, spotify..." class="w-full px-4 py-2.5 rounded-lg border-2 text-sm focus:outline-none focus:border-purple-500" style="border-color:var(--border-color);background:var(--bg-primary);color:var(--text-primary);">
     <div class="flex flex-wrap gap-2 mt-3" id="filter-chips">
      <button type="button" class="filter-chip aktif" data-kat="semua">Semua</button>
      <button type="button" class="filter-chip" data-kat="game">Game</button>
@@ -173,12 +173,21 @@
     <h2 class="text-3xl font-bold" style="color:var(--text-primary)">Riwayat Pesanan</h2>
     <p style="color:var(--text-secondary)" class="mt-1">Semua order Anda lengkap dengan status terbaru dari server</p>
     </div>
+    <div class="ml-auto flex gap-3">
+     <button type="button" id="btn-export-csv" class="adm-btn adm-btn-ghost" title="Ekspor CSV">
+      📄 CSV
+     </button>
+     <button type="button" id="btn-export-pdf" class="adm-btn adm-btn-ghost" title="Ekspor PDF">
+      📑 PDF
+     </button>
+    </div>
    </div>
    <div id="transactions-container"></div>   </div>
    <div class="mt-12 p-6 rounded-2xl" style="background:var(--bg-card);box-shadow:var(--shadow);">
     <h3 class="text-xl font-bold mb-4" style="color:var(--text-primary)">Cek Status Pesanan</h3>
     <p class="mb-4" style="color:var(--text-secondary)">Masukkan Order ID untuk melihat status pesanan Anda</p>
     <div id="order-status-section"></div>
+   </div>
    </div>
   </section>
   </div><!-- Profile Page -->
@@ -252,6 +261,14 @@
     </div>
     </div>
    </div>
+   <div class="flex gap-3 mb-6">
+    <button type="button" id="btn-profile-export-csv" class="adm-btn adm-btn-ghost" title="Ekspor CSV Riwayat">
+     📄 Ekspor CSV
+    </button>
+    <button type="button" id="btn-profile-export-pdf" class="adm-btn adm-btn-ghost" title="Ekspor PDF Riwayat">
+     📑 Ekspor PDF
+    </button>
+   </div>
    <div class="rounded-xl p-6" style="background:var(--bg-card);box-shadow:var(--shadow);">
     <h3 class="text-xl font-bold mb-4" style="color:var(--text-primary)">Pengaturan Akun</h3>
     <div class="space-y-3"><button class="settings-btn w-full text-left px-4 py-3 rounded-lg flex items-center justify-between" style="color:var(--text-primary)" data-action="open-change-password">
@@ -277,8 +294,8 @@
   
 
 
-
-     </div>
+  </div>
+  </div><!-- Footer -->
   <footer id="site-footer" class="bg-gray-800 text-white w-full py-12">
   <div class="max-w-7xl mx-auto px-4">
    <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
@@ -377,21 +394,21 @@
     </div>
     </div>
     <div class="mb-6">
-    <div class="promo-kotak" id="promo-box">
-     <p class="promo-judul">Punya Kode Promo?</p>
-     <p class="promo-petunjuk">Masukkan kode untuk memotong harga. Satu order hanya memakai satu kode.</p>
-     <div class="promo-baris">
-      <input type="text" id="promo-input" placeholder="Contoh: HEMAT10" autocomplete="off" spellcheck="false" class="promo-input">
-      <button type="button" id="promo-pakai-btn" class="promo-tombol">Pakai</button>
-      <button type="button" id="promo-hapus-btn" class="promo-tombol lembut" style="display:none;">Lepas</button>
+     <div class="promo-kotak" id="promo-box">
+      <p class="promo-judul">Punya Kode Promo?</p>
+      <p class="promo-petunjuk">Masukkan kode untuk memotong harga. Satu order hanya memakai satu kode.</p>
+      <div class="promo-baris">
+       <input type="text" id="promo-input" placeholder="Contoh: HEMAT10" autocomplete="off" spellcheck="false" class="promo-input">
+       <button type="button" id="promo-pakai-btn" class="promo-tombol">Pakai</button>
+       <button type="button" id="promo-hapus-btn" class="promo-tombol lembut" style="display:none;">Lepas</button>
+      </div>
+      <p class="promo-status" id="promo-status"></p>
+      <div class="promo-ringkas" id="promo-ringkas"></div>
+      <p class="promo-daftar-judul" id="promo-daftar-judul" style="display:none;">Kode Tersedia</p>
+      <ul class="promo-daftar" id="promo-daftar" style="display:none;"></ul>
      </div>
-     <p class="promo-status" id="promo-status"></p>
-     <div class="promo-ringkas" id="promo-ringkas"></div>
-     <p class="promo-daftar-judul" id="promo-daftar-judul" style="display:none;">Kode Tersedia</p>
-     <ul class="promo-daftar" id="promo-daftar" style="display:none;"></ul>
     </div>
-   </div>
-   <div class="mb-6">
+    <div class="mb-6">
     <label class="block font-semibold mb-2" style="color:var(--text-primary)" for="whatsapp">Nomor WhatsApp</label><input type="tel" id="whatsapp" required="" placeholder="08123456789" class="w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:border-purple-500" style="border-color:var(--border-color);background:var(--bg-primary);color:var(--text-primary);">
     </div><button type="submit" id="submit-btn" class="w-full bg-purple-600 text-white py-4 rounded-lg font-bold text-lg hover:bg-purple-700 transition">Beli Sekarang</button>
    </form>
@@ -405,7 +422,7 @@
     <div style="background:var(--bg-primary); border-radius:14px; padding:18px; margin-bottom:16px; border:1px solid var(--border-color);">
      <div class="flex justify-between py-1"><span style="color:var(--text-secondary); font-weight:600;">Order ID</span><span id="pay-order-id" class="font-bold" style="color:var(--text-primary)">—</span></div>
      <div class="flex justify-between py-1" id="pay-promo" style="display:none;"><span style="color:var(--text-secondary); font-weight:600;" id="pay-promo-label">-</span><span class="font-bold" style="color:#22c55e;" id="pay-promo-potong">-</span></div>
-     <div class="flex justify-between py-1"><span style="color:var(--text-secondary); font-weight:600;">Total Bayar</span><span id="pay-total" class="font-bold text-purple-600">—</span></div>
+     <div class="flex justify-between py-1"><span style="color:var(--text-secondary); font-weight:600;">Total Bayar</span><span id="pay-total" class="font-bold text-purple-600">-</span></div>
      <div class="flex justify-between py-1"><span style="color:var(--text-secondary); font-weight:600;">Metode</span><span id="pay-method" class="font-bold" style="color:var(--text-primary)">—</span></div>
     </div>
     <div style="background:rgba(109,40,217,.06); border:1px dashed var(--border-color); border-radius:14px; padding:18px; margin-bottom:18px; text-align:center;">
@@ -798,11 +815,14 @@
                </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                <div class="rounded-lg p-4" style="background:var(--bg-primary);">
                   <div class="text-sm">Upcoming Event</div>
                   <div id="owner-upcoming-event" class="text-lg">—</div>
                </div>
+               <div class="rounded-lg p-4" style="background:var(--bg-primary);">
+                  <div class="text-sm">Community Activity</div>
+                            </div>
                <div class="rounded-lg p-4" style="background:var(--bg-primary);">
                   <div class="text-sm">Latest Announcement</div>
                   <div id="owner-latest-announcement" class="text-lg">—</div>
@@ -927,8 +947,9 @@
    </div>
   </div>
   </div>
+ </div>
  <!-- removed absolute /_sdk script to avoid 404s on Live Server -->
- <script src="data/games.js?v=20260929a"></script>
+ <script src="data/games.js?v=20260925d"></script>
  <script src="js/constants.js?v=20260925d"></script>
  <script src="js/storage.js?v=20260925d"></script>
  <script src="js/utilities.js?v=20260925d"></script>
@@ -940,7 +961,7 @@
 <script src="js/auth.js?v=20260925d"></script>
 <script src="js/profile.js?v=20260925d"></script>
 <script src="js/transactions.js?v=20260925d"></script>
-<script src="js/riwayat.js?v=20260929a"></script>
+ <script src="js/riwayat.js?v=20260929a"></script>
 <script src="js/giveaway.js?v=20260925d"></script>
    <script src="js/event.js?v=20260925d"></script>
     <script src="js/announcement.js?v=20260925d"></script>
@@ -952,11 +973,16 @@
 <script src="js/darkmode.js?v=20260925d"></script>
 <script src="js/idcheck.js?v=20260929a"></script>
    <script src="js/promo.js?v=20260929a"></script>
+   <script src="js/export.js?v=20260929a"></script>
    <script src="js/topup.js?v=20260929a"></script>
 <script src="js/owner.js?v=20260925d"></script>
 				<script src="js/content-bridge.js?v=20260925d"></script>
    <script src="js/owner-sync.js?v=20260925d"></script>
 				<script src="js/order-status.js?v=20260925d"></script>
 				<script src="js/app.js?v=20260925d"></script>
+				<!-- KHUSUS DEV: pembuat akun uji otomatis. Jangan dibawa ke produksi. -->
+				<script src="js/seed-uji.js?v=20260929a"></script>
+ <script src="js/seed-riwayat-uji.js?v=20260929a"></script>
  <!-- Removed iframe/CLOUDFLARE challenge injection to prevent 404 and MIME errors -->
+</body></html>
 </body></html>
