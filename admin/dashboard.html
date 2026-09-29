@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="../css/style.css?v=20260925d" />
   <link rel="stylesheet" href="../css/order-message.css?v=20260925d" />
   <link rel="stylesheet" href="css/admin.css?v=20260925d" />
+  <link rel="stylesheet" href="css/admin-dashboard.css?v=20260929a" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="../js/notify-config.js?v=20260925d"></script>
 </head>
 <body>
@@ -22,6 +24,7 @@
       </nav>
     </div>
 
+    <!-- Stats Cards -->
     <div class="adm-stats">
       <div class="adm-stat">
         <div class="adm-stat-label">Order Hari Ini</div>
@@ -33,18 +36,96 @@
       </div>
       <div class="adm-stat">
         <div class="adm-stat-label">Total Order</div>
-        <div class="adm-stat-value" id="stat-total-members">0</div>
+        <div class="adm-stat-value" id="stat-total-all-orders">0</div>
+      </div>
+      <div class="adm-stat">
+        <div class="adm-stat-label">Total Omzet</div>
+        <div class="adm-stat-value" id="stat-total-all-revenue">Rp 0</div>
+      </div>
+      <div class="adm-stat">
+        <div class="adm-stat-label">Rata-rata/Order</div>
+        <div class="adm-stat-value" id="stat-avg-order">Rp 0</div>
+      </div>
+      <div class="adm-stat">
+        <div class="adm-stat-label">Tingkat Selesai</div>
+        <div class="adm-stat-value" id="stat-completion-rate">0%</div>
       </div>
     </div>
 
+    <!-- Filter Bar -->
+    <div class="adm-card adm-filter-bar">
+      <h2>Filter & Ekspor</h2>
+      <div class="adm-filter-row">
+        <div class="adm-filter-group">
+          <label for="filter-game">Game</label>
+          <select id="filter-game" class="adm-filter-select">
+            <option value="">Semua Game</option>
+          </select>
+        </div>
+        <div class="adm-filter-group">
+          <label for="filter-status">Status</label>
+          <select id="filter-status" class="adm-filter-select">
+            <option value="">Semua Status</option>
+            <option value="Pending">Pending</option>
+            <option value="Diproses">Diproses</option>
+            <option value="Success">Success</option>
+            <option value="Selesai">Selesai</option>
+            <option value="Cancel">Cancel</option>
+            <option value="Dibatalkan">Dibatalkan</option>
+            <option value="Refund">Refund</option>
+          </select>
+        </div>
+        <div class="adm-filter-group">
+          <label for="filter-date-from">Dari Tanggal</label>
+          <input type="date" id="filter-date-from" class="adm-filter-input" />
+        </div>
+        <div class="adm-filter-group">
+          <label for="filter-date-to">Sampai Tanggal</label>
+          <input type="date" id="filter-date-to" class="adm-filter-input" />
+        </div>
+        <div class="adm-filter-group adm-filter-actions">
+          <button type="button" class="adm-btn adm-btn-primary" id="btn-apply-filter">Terapkan</button>
+          <button type="button" class="adm-btn adm-btn-ghost" id="btn-reset-filter">Reset</button>
+          <button type="button" class="adm-btn adm-btn-success" id="btn-export-csv">Ekspor CSV</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Section -->
     <div class="adm-card">
       <h2>Status Order</h2>
       <p class="adm-note" id="status-summary">Memuat data…</p>
       <div class="adm-pills" id="status-pills"></div>
-      <h2 style="margin-top:22px;">Order 7 Hari Terakhir</h2>
-      <div class="adm-chart" id="chart-orders"></div>
+      
+      <div class="adm-chart-tabs">
+        <button type="button" class="adm-chart-tab active" data-chart="daily">Harian (7 Hari)</button>
+        <button type="button" class="adm-chart-tab" data-chart="monthly">Bulanan (12 Bulan)</button>
+      </div>
+      <div class="adm-chart-wrapper">
+        <canvas id="chart-orders"></canvas>
+      </div>
     </div>
 
+    <!-- Game Performance -->
+    <div class="adm-card">
+      <h2>Performa per Game</h2>
+      <div class="adm-table-wrapper">
+        <table class="adm-table" id="game-performance-table">
+          <thead>
+            <tr>
+              <th>Game</th>
+              <th>Order</th>
+              <th>Omzet</th>
+              <th>Rata-rata</th>
+              <th>Tingkat Selesai</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Bantu Proses Order -->
     <div class="adm-card">
       <h2>Bantu Proses Order (Salin Detail Order)</h2>
       <p class="adm-note">
@@ -109,6 +190,7 @@
       <p class="gm-meta">Baris paling bawah (nomor WA pembeli) hanya untuk catatan internal — hapus sebelum kirim ke pembeli.</p>
     </div>
 
+    <!-- Notifikasi Otomatis -->
     <div class="adm-card">
       <h2>Notifikasi Otomatis (sudah aktif)</h2>
       <p class="adm-note">
@@ -122,7 +204,7 @@
   </div>
 
   <script src="js/admin-api.js?v=20260925d"></script>
-  <script src="js/dashboard.js?v=20260925d"></script>
+  <script src="js/dashboard.js?v=20260929a"></script>
   <script src="js/order-message.js?v=20260925d"></script>
 </body>
 </html>
