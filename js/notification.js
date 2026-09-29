@@ -112,6 +112,11 @@
 			payment: orderData.payment,
 			customerName: orderData.customerName || window.currentUser?.nickname || 'Customer',
 			customerPhone: orderData.customerPhone || '',
+			/* Fase 3: simpan identitas pemilik supaya riwayat bisa
+			   difilter per akun. Order lama (tanpa key ini) tetap
+			   ditampilkan sebagai "Tanpa akun" - lihat riwayat.js. */
+			ownerEmail: (window.currentUser && window.currentUser.email) || orderData.ownerEmail || '',
+			ownerUsername: (window.currentUser && window.currentUser.username) || orderData.ownerUsername || '',
 			createdAt: new Date().toISOString(),
 			timestamp: generateTimestamp(),
 			status: 'Pending'
