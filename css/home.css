@@ -22,3 +22,13 @@
 .faq-answer.active{display:block}
 
 .slider-slide{transition:opacity .5s ease-in-out}
+
+/* Katalog & pencarian (upgrade fase 1, 2026-09-29) */
+.filter-chip{border:2px solid var(--border-color);background:var(--bg-card);color:var(--text-secondary);padding:.4rem .95rem;border-radius:999px;font-size:.85rem;font-weight:600;cursor:pointer;transition:all .25s}
+.filter-chip:hover{border-color:#8b5cf6;color:var(--text-primary)}
+.filter-chip.aktif{background:#7c3aed;border-color:#7c3aed;color:#fff}
+/* Fase 2: pesan cek ID game */
+.id-hint{line-height:1.35;transition:color .2s}
+.id-hint.ok{color:#16a34a}
+.id-hint.buruk{color:#dc2626}
+#user-id.buruk{border-color:#dc2626!important}

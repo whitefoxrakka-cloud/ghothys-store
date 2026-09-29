@@ -5,6 +5,7 @@
     window.currentGame=game;
     document.getElementById('modal-icon').innerHTML=`<img src="${game.icon}" alt="${game.name}" style="width:60px;height:60px;object-fit:cover;border-radius:12px;" onerror="this.outerHTML='🎮'">`;
     document.getElementById('modal-title').textContent=game.name;
+    if(window.ID_CHECK && window.ID_CHECK.muatPanduan) window.ID_CHECK.muatPanduan(game);
     document.getElementById('package-options').innerHTML=game.packages.map((p,i)=>{const dp=p.discount>0?p.price*(1-p.discount/100):p.price;return`<label class="border-2 rounded-lg p-4 cursor-pointer hover:border-purple-500" style="border-color:var(--border-color);"><input type="radio" name="package" value='${JSON.stringify(p)}' ${i===0?'required':''} class="mr-2"><div class="flex justify-between items-start"><div><span class="font-semibold" style="color:var(--text-primary)">${p.name}</span>${p.discount>0?`<div class="text-xs text-green-600">🔥 -${p.discount}%</div>`:''}</div><div class="text-purple-600 font-bold">Rp ${Math.floor(dp).toLocaleString('id-ID')}</div></div></label>`;}).join('');
     document.getElementById('available-points').textContent=window.currentUser.points||0;
     /* Anti-spam: catat kapan form dibuka. Worker menolak order yang
@@ -113,6 +114,23 @@
     try {
       const userId = document.getElementById('user-id').value.trim();
       const serverId = document.getElementById('server-id').value.trim();
+
+      // Cek format ID sesuai game (upgrade fase 2)
+      if (window.ID_CHECK && typeof window.ID_CHECK.cek === 'function') {
+        const cekId = window.ID_CHECK.cek(userId, window.currentGame);
+        if (cekId.wajib && !cekId.ok) {
+          const hint = document.getElementById('id-hint');
+          if (hint) {
+            hint.textContent = cekId.pesan || 'Format ID belum sesuai';
+            hint.className = 'id-hint buruk';
+          }
+          const elId = document.getElementById('user-id');
+          if (elId) elId.focus();
+          window.showErrorToast('ID Tidak Valid', cekId.pesan || 'Format ID belum sesuai');
+          return;
+        }
+      }
+
       const packageSelect = document.querySelector('input[name="package"]:checked');
       const paymentSelect = document.querySelector('input[name="payment"]:checked');
 

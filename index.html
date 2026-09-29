@@ -35,7 +35,7 @@
  <link rel="stylesheet" href="css/style.css?v=20260925d">
  <link rel="stylesheet" href="css/animations.css?v=20260925d">
  <link rel="stylesheet" href="css/navigation.css?v=20260925d">
- <link rel="stylesheet" href="css/home.css?v=20260925d">
+ <link rel="stylesheet" href="css/home.css?v=20260929b">
   <link rel="stylesheet" href="css/giveaway.css?v=20260925d">
    <link rel="stylesheet" href="css/event.css?v=20260925d">
     <link rel="stylesheet" href="css/announcement.css?v=20260925d">
@@ -107,6 +107,17 @@
   <section class="w-full py-16" style="background:var(--bg-primary);">
    <div class="max-w-7xl mx-auto px-4">
    <h2 class="text-3xl font-bold mb-8" style="color:var(--text-primary)">Game Populer</h2>
+   <div class="mb-6">
+    <input type="text" id="search-katalog" placeholder="Cari game atau paket - mis. diamond, free fire, netflix, spotify..." class="w-full px-4 py-2.5 rounded-lg border-2 text-sm focus:outline-none focus:border-purple-500" style="border-color:var(--border-color);background:var(--bg-primary);color:var(--text-primary);">
+    <div class="flex flex-wrap gap-2 mt-3" id="filter-chips">
+     <button type="button" class="filter-chip aktif" data-kat="semua">Semua</button>
+     <button type="button" class="filter-chip" data-kat="game">Game</button>
+     <button type="button" class="filter-chip" data-kat="streaming">Streaming</button>
+     <button type="button" class="filter-chip" data-kat="musik">Musik</button>
+     <button type="button" class="filter-chip" data-kat="termurah">Urut Termurah</button>
+    </div>
+    <p id="katalog-info" class="mt-3 text-sm" style="color:var(--text-secondary);"></p>
+   </div>
    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" id="games-container"></div>
    </div>
   </section>
@@ -312,6 +323,7 @@
     <div aria-hidden="true" class="gh-hp" style="position:absolute!important;left:-9999px!important;top:-9999px!important;width:1px!important;height:1px!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important;"><label for="website">Website</label><input type="text" id="website" name="website" tabindex="-1" autocomplete="off" value=""></div>
     <div class="mb-6">
     <label class="block font-semibold mb-2" style="color:var(--text-primary)" for="user-id">User ID</label><input type="text" id="user-id" required="" placeholder="Masukkan User ID" class="w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:border-purple-500" style="border-color:var(--border-color);background:var(--bg-primary);color:var(--text-primary);">
+    <p id="id-hint" class="text-xs mt-1" style="color:var(--text-secondary);"></p>
     </div>
     <div class="mb-6">
     <label class="block font-semibold mb-2" style="color:var(--text-primary)" for="server-id">Server/Zone ID</label><input type="text" id="server-id" required="" placeholder="Masukkan Server/Zone ID" class="w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:border-purple-500" style="border-color:var(--border-color);background:var(--bg-primary);color:var(--text-primary);">
@@ -888,12 +900,12 @@
   </div>
   </div>
  <!-- removed absolute /_sdk script to avoid 404s on Live Server -->
- <script src="data/games.js?v=20260925d"></script>
+ <script src="data/games.js?v=20260929a"></script>
  <script src="js/constants.js?v=20260925d"></script>
  <script src="js/storage.js?v=20260925d"></script>
  <script src="js/utilities.js?v=20260925d"></script>
  <script src="js/slider.js?v=20260925d"></script>
- <script src="js/render.js?v=20260925d"></script>
+ <script src="js/render.js?v=20260929b"></script>
  <script src="js/router.js?v=20260925d"></script>
  <script src="js/navigation.js?v=20260925d"></script>
  <script src="js/animations.js?v=20260925d"></script>
@@ -909,7 +921,8 @@
 <script src="js/notification.js?v=20260925d"></script>
 <script src="js/api.js?v=20260925d"></script>
 <script src="js/darkmode.js?v=20260925d"></script>
-<script src="js/topup.js?v=20260925d"></script>
+<script src="js/idcheck.js?v=20260929a"></script>
+   <script src="js/topup.js?v=20260929a"></script>
 <script src="js/owner.js?v=20260925d"></script>
 				<script src="js/content-bridge.js?v=20260925d"></script>
    <script src="js/owner-sync.js?v=20260925d"></script>

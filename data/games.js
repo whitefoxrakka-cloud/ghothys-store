@@ -399,14 +399,4 @@ window.gamesData = [
       { name: '1.000 Robux', detail: 'Robux', price: 165500, points: 1000, discount: 0 }
     ]
   },
-  {
-    name: 'BStation',
-    icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Bilibili_Logo.svg/640px-Bilibili_Logo.svg.png',
-    searchKey: 'bstation',
-    basePrice: 'Rp 9.100',
-    packages: [
-      { name: '1 Bulan Sharing', detail: 'BStation Sharing', price: 9100, points: 0, discount: 0 },
-      { name: '1 Bulan Private', detail: 'BStation Private', price: 26500, points: 0, discount: 0 }
-    ]
-  }
-];
+  ];
