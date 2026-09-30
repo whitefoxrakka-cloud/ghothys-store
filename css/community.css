@@ -1,0 +1,305 @@
+/* ============================================================
+   GHOTHYS STORE - COMMUNITY (halaman Komunitas)
+   ------------------------------------------------------------
+   Melengkapi yang belum ada dari announcement.css / event.css:
+   1. Cangkang gelap untuk halaman Komunitas. Kedua CSS di atas
+      ditulis untuk latar gelap sepenuhnya (0 aturan mode terang),
+      sedangkan situs bawaannya terang. Halaman ini jadi pulau
+      gelap tersendiri agar seluruh CSS itu langsung cocok.
+   2. .pb-banner-* untuk banner milik owner. Isi dari tombol
+      "Manage Banners" di Owner Panel sebelumnya tidak punya CSS
+      sama sekali.
+   3. .an-cc-grad dan .ev-cc-grad: kotak gradien sebagai pengganti
+      gambar sampul yang kosong.
+   4. .ev-card-desc: dibangun content-bridge.js tapi tak ada aturan.
+   5. Status "belum ada konten", tombol bookmark aktif, dan
+      perbaikan posisi untuk kartu pengumuman.
+   ============================================================ */
+
+/* ---------- 1. Cangkang gelap halaman Komunitas ---------- */
+#community-page .komunitas {
+  background: #0B1020;
+  color: #e2e8f0;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* Judul blok & teks yang pakai var(--text-white) tetap terang. */
+#community-page .komunitas .an-block-title,
+#community-page .komunitas .ev-block-title {
+  color: #f1f5f9;
+}
+
+/* Navigasi cepat: tautan anchor ke bagian dalam halaman ini. */
+#community-page .komunitas .an-quick-link:hover {
+  color: #c4b5fd;
+  border-color: rgba(139, 92, 246, 0.25);
+  background: rgba(139, 92, 246, 0.06);
+}
+
+/* Placeholder tombol segitiga kecil di panel Community. */
+#community-page .komunitas ::-webkit-scrollbar { width: 6px; height: 6px; }
+#community-page .komunitas ::-webkit-scrollbar-track { background: transparent; }
+#community-page .komunitas ::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.25);
+  border-radius: 3px;
+}
+
+/* ---------- 2. Kartu pengumuman: relative + gradien ---------- */
+
+/* .an-card tidak punya position, padahal .an-card.pinned::after
+   memakai position:absolute. Tanpa ini, lencana disematkan
+   melayang keluar kartu. */
+#community-page .komunitas .an-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+#community-page .komunitas .an-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.an-cc-grad {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #1f2937, #7c3aed);
+}
+
+.ev-cc-grad {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #1e3a8a, #7c3aed);
+}
+
+/* ---------- 3. Deskripsi kartu acara ---------- */
+/* content-bridge.js menulis .ev-card-desc tapi event.css tak
+   pernah mendefinisikannya, jadi teksnya berderet tanpa batas. */
+.ev-card-desc {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin-bottom: 0.6rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---------- 4. Banner milik owner ---------- */
+.pb-banner {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(139, 92, 246, 0.12);
+  background: rgba(19, 24, 55, 0.5);
+}
+
+.pb-banner-kosong {
+  padding: 1.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+/* Jalur geser mendatar dengan snapan per banner: setiap banner
+   berhenti rapi di tengah, bisa digeser jari atau tetikus. */
+.pb-banner-track {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 0.75rem;
+}
+
+.pb-banner-track::-webkit-scrollbar { display: none; }
+
+.pb-banner-item {
+  position: relative;
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.pb-banner-cover {
+  width: 100%;
+  aspect-ratio: 21 / 7;
+  overflow: hidden;
+}
+
+.pb-banner-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pb-banner-keterangan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 1.5rem 0.9rem 0.7rem;
+  background: linear-gradient(0deg, rgba(11, 16, 32, 0.95), transparent);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.pb-banner-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  min-width: 0;
+}
+
+.pb-banner-link {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #c4b5fd;
+  text-decoration: none;
+  white-space: nowrap;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 8px;
+  padding: 4px 10px;
+  transition: all 0.25s;
+}
+
+.pb-banner-link:hover {
+  background: rgba(139, 92, 246, 0.18);
+  color: #fff;
+}
+
+.pb-banner-indikator {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 0.75rem 0.75rem;
+}
+
+.pb-banner-titik {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.3);
+  transition: all 0.25s;
+}
+
+.pb-banner-titik.aktif {
+  background: #8B5CF6;
+  width: 18px;
+  border-radius: 3px;
+}
+
+/* ---------- 5. Status belum ada konten ---------- */
+.komunitas-kosong {
+  padding: 2.25rem 1.25rem;
+  text-align: center;
+  border: 1px dashed rgba(139, 92, 246, 0.18);
+  border-radius: 16px;
+  background: rgba(19, 24, 55, 0.35);
+}
+
+.komunitas-kosong-judul {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #cbd5e1;
+  margin-bottom: 0.35rem;
+}
+
+.komunitas-kosong-ket {
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.6;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+/* Panel pengumuman disematkan disembunyikan selama belum ada. */
+.komunitas-pinned[hidden] {
+  display: none;
+}
+
+/* ---------- 6. Bookmark ---------- */
+.an-cc-bookmark.aktif,
+.ev-cc-bookmark.aktif {
+  background: rgba(139, 92, 246, 0.85);
+  color: #fff;
+}
+
+.an-cc-bookmark:focus-visible,
+.ev-cc-bookmark:focus-visible,
+.an-filter-tab:focus-visible,
+.an-filter-select:focus-visible,
+.an-filter-search input:focus-visible { /* cek-bahasa: allow */
+  outline: 2px solid #8B5CF6;
+  outline-offset: 2px;
+}
+
+/* Kartu yang sedang disaring keluar tidak boleh memakan ruang. */
+#community-page .komunitas .an-card[hidden],
+#community-page .komunitas .ev-card[hidden] {
+  display: none;
+}
+
+/* ---------- 7. Lencana pengumuman ---------- */
+/* announcement.css punya .an-badge.pinned, .official, .update, dan
+   segalanya, tapi tidak punya .info yang dipakai content-bridge.js
+   untuk pengumuman biasa. */
+.an-badge.info {
+  background: #38bdf8;
+  color: #fff;
+}
+
+/* ---------- 8. Layar kecil ---------- */
+@media (max-width: 640px) {
+  #community-page .komunitas .an-hero {
+    min-height: 260px;
+    padding: 2rem 1rem;
+  }
+
+  #community-page .komunitas .an-grid,
+  #community-page .komunitas .ev-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #community-page .komunitas .an-filter-bar,
+  #community-page .komunitas .ev-filter-bar {
+    padding: 0.6rem 0.75rem;
+  }
+
+  #community-page .komunitas .an-filter-search,
+  #community-page .komunitas .ev-filter-search {
+    max-width: none;
+    flex-basis: 100%;
+  }
+
+  #community-page .komunitas .an-filter-tabs {
+    margin-left: 0;
+    overflow-x: auto;
+  }
+
+  .pb-banner-cover {
+    aspect-ratio: 16 / 9;
+  }
+}
+
+/* Hormati preferensi pengguna yang mengurangi animasi. */
+@media (prefers-reduced-motion: reduce) {
+  #community-page .komunitas *,
+  #community-page .komunitas *::before,
+  #community-page .komunitas *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

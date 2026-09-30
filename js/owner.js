@@ -24,26 +24,62 @@
     if(modal){ modal.style.display='none'; document.body.style.overflow='auto'; }
   };
 
+  /* Buka halaman Komunitas supaya owner bisa langsung melihat hasil
+     dari pengumuman, acara, dan banner yang baru ia simpan. */
+  window.bukaHalamanKomunitas = function(){
+    window.closeOwnerPanel();
+    if(typeof window.navigateTo === 'function') window.navigateTo('community-page');
+    if(typeof window.komunitasSegarkan === 'function') window.komunitasSegarkan();
+  };
+
   window.renderOwnerDashboard = function(){
     const data = window.getOwnerData();
-    const totalMembers = (typeof window.getAllUsers==='function')? window.getAllUsers().length : 0;
-    const membersOnline = Math.min(totalMembers, 12); // placeholder; presence not tracked
-    const totalPosts = (data.posts && data.posts.length) || 0;
-    const pinned = data.pinnedAnnouncement || '—';
-    const upcoming = (data.events && data.events.length)? data.events[0].title || '—' : '—';
-    const communityActivity = (window.communityMessages && window.communityMessages.length) || 0;
-    const latestAnnouncement = (data.announcements && data.announcements.length)? data.announcements[data.announcements.length-1].title || '—' : '—';
-    const latestEvent = (data.events && data.events.length)? data.events[data.events.length-1].title || '—' : '—';
+    const TIDAK_ADA = '-';
 
-    const setText = (id, text)=>{ const el=document.getElementById(id); if(el) el.textContent = text; };
-    setText('owner-total-members', totalMembers);
-    setText('owner-members-online', membersOnline);
-    setText('owner-total-posts', totalPosts);
-    setText('owner-pinned-announcement', pinned);
-    setText('owner-upcoming-event', upcoming);
-    setText('owner-community-activity', communityActivity);
-    setText('owner-latest-announcement', latestAnnouncement);
-    setText('owner-latest-event', latestEvent);
+    const anggota = (typeof window.getAllUsers === 'function') ? window.getAllUsers().length : 0;
+
+    const pengumuman = (data.announcements && data.announcements.length) ? data.announcements : [];
+    const acara      = (data.events && data.events.length) ? data.events : [];
+    const banner     = (data.banners && data.banners.length) ? data.banners : [];
+
+    /* Hitung mundur. Versi lama memakai Math.min(anggota, 12),
+       yaitu angka rekaan yang selalu tampil padahal tidak ada
+       satu pun pelacakan kehadiran. Kartu itu dihapus dari panel
+       dan digantikan angka yang benar-benar dihitung. */
+    const totalKonten = pengumuman.length + acara.length + banner.length;
+
+    /* Acara mendatang: yang tanggalnya belum lewat, paling dekat.
+       Kalau tidak ada, kartu disembunyikan daripada diisi
+       angka rekaan. */
+    const sekarang = new Date().getTime();
+    const akanDatang = acara
+      .map(ev => ({ ev, waktu: Date.parse(ev.date || ev.tanggal || '') }))
+      .filter(x => isFinite(x.waktu) && x.waktu >= sekarang)
+      .sort((a, b) => a.waktu - b.waktu);
+
+    const disematkan = data.pinnedAnnouncement || TIDAK_ADA;
+    const judulAkanDatang = akanDatang.length ? (akanDatang[0].ev.title || TIDAK_ADA) : '';
+    const pengumumanTerbaru = pengumuman.length ? (pengumuman[pengumuman.length - 1].title || TIDAK_ADA) : TIDAK_ADA;
+    const acaraTerbaru = acara.length ? (acara[acara.length - 1].title || TIDAK_ADA) : TIDAK_ADA;
+
+    const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    setText('owner-total-members', anggota);
+    setText('owner-total-content', totalKonten);
+    setText('owner-total-announcements', pengumuman.length);
+    setText('owner-total-events', acara.length);
+    setText('owner-pinned-announcement', disematkan);
+    setText('owner-latest-announcement', pengumumanTerbaru);
+    setText('owner-latest-event', acaraTerbaru);
+
+    /* Kartu "Acara Mendatang" disembunyikan kalau memang tidak ada
+       acara yang akan datang, supaya tidak ada kotak kosong. */
+    const kartuMendatang = document.getElementById('owner-upcoming-event-kartu');
+    const teksMendatang = document.getElementById('owner-upcoming-event');
+    if (kartuMendatang && teksMendatang) {
+      const ada = akanDatang.length > 0;
+      kartuMendatang.style.display = ada ? '' : 'none';
+      if (ada) setText('owner-upcoming-event', judulAkanDatang);
+    }
   };
 
   /* Announcement Manager (Phase 2) */

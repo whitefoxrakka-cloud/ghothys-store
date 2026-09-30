@@ -344,6 +344,80 @@
       'Ekspor PDF Gagal': 'PDF Export Failed',
       'Gagal memuat library jsPDF': 'Could not load the jsPDF library',
       'Daftar akun': 'Account list',
+    // Halaman Komunitas
+    'Komunitas': 'Community',
+    'Pusat Komunitas': 'Community Hub',
+    'Pengumuman, acara, dan banner resmi dari Ghothys Store. Semuanya ditulis owner di panel admin dan langsung tampil untuk semua pengunjung.':
+    'Official announcements, events, and banners from Ghothys Store. Everything is written by the owner in the admin panel and shows up for every visitor right away.',
+    'Total Konten': 'Total Content',
+    'Disematkan oleh owner di panel admin':
+    'Pinned by the owner in the admin panel',
+    // Penyaring pengumuman
+    'Pengumuman': 'Announcements',
+    'Cari pengumuman': 'Search announcements',
+    'Semua kategori': 'All categories',
+    'Disematkan': 'Pinned',
+    'Pengumuman biasa': 'Regular announcement',
+    'Terbaru': 'Newest',
+    'Terlama': 'Oldest',
+    'Urut judul': 'By title',
+    'Biasa': 'Regular',
+    'Belum ada pengumuman': 'No announcements yet',
+    'Owner bisa menambah pengumuman lewat tombol Manage Announcements di panel admin. Setelah tersimpan ke server, pengumuman langsung muncul di sini.':
+    'The owner can add announcements through the Manage Announcements button in the admin panel. Once it is saved to the server, the announcement shows up here right away.',
+    '{n} pengumuman': '{n} announcements',
+    // Penyaring acara
+    'Acara': 'Events',
+    'Cari acara': 'Search events',
+    'Semua status': 'All statuses',
+    'Mendatang': 'Upcoming',
+    'Selesai': 'Finished',
+    'Terdekat': 'Nearest',
+    'Paling awal': 'Earliest first',
+    'Belum ada acara': 'No events yet',
+    'Owner bisa menambah acara lewat tombol Manage Events di panel admin. Acara yang tanggalnya belum lewat ikut dihitung mundur di atas.':
+    'The owner can add events through the Manage Events button in the admin panel. Events whose date has not passed are counted down above.',
+    '{n} acara': '{n} events',
+    // Teks di dalam kartu
+    'Resmi': 'Official',
+    'Berlangsung': 'Live',
+    'Dibatalkan': 'Cancelled',
+    'Lihat detail': 'See details',
+    'Tandai pengumuman ini untuk dibaca nanti':
+    'Bookmark this announcement for later',
+    'Tandai acara ini untuk dibaca nanti': 'Bookmark this event for later',
+    // Hitung mundur
+    'Hari': 'Days',
+    'Jam': 'Hours',
+    'Menit': 'Minutes',
+    'Detik': 'Seconds',
+    // Modul komunitas
+    'Tandai untuk dibaca nanti': 'Bookmark for later',
+    'Klik untuk baca penuh': 'Click to read in full',
+    'Klik untuk ciutkan': 'Click to collapse',
+    'Belum ada banner': 'No banners yet',
+    'Owner bisa menambah banner lewat tombol Manage Banners di Owner Panel.':
+    'The owner can add banners through the Manage Banners button in the Owner Panel.',
+    // Panel admin
+    'Jumlah akun di browser ini': 'Accounts registered in this browser',
+    'Konten Terpublikasi': 'Published Content',
+    'Tampil di halaman Komunitas': 'Shown on the Community page',
+    'Pengumuman Disematkan': 'Pinned Announcement',
+    'Acara Mendatang': 'Upcoming Event',
+    'Pengumuman Terbaru': 'Latest Announcement',
+    'Lihat Halaman Komunitas': 'Open Community Page',
+    'Buka halaman Komunitas': 'Open the community page',
+    'Total Member': 'Total Members',
+    'Member': 'Members',
+    // Label aksesibilitas penyaring
+    'Saring pengumuman menurut kategori': 'Filter announcements by category',
+    'Urutkan pengumuman': 'Sort announcements',
+    'Saring acara menurut status': 'Filter events by status',
+    'Urutkan acara': 'Sort events',
+    // Banner
+    'Banner': 'Banners',
+    'Owner bisa menambah banner lewat tombol Manage Banners di panel admin. Banner berganti sendiri setiap beberapa detik.':
+    'The owner can add banners through the Manage Banners button in the admin panel. Banners change on their own every few seconds.',
     },
   };
 
@@ -533,6 +607,13 @@
         window.renderRiwayat();
       } catch (e) {
         console.warn('[BAHASA] riwayat gagal digambar ulang', e);
+      }
+    }
+    if (aktif.id === 'community-page' && typeof window.komunitasSegarkan === 'function') {
+      try {
+        window.komunitasSegarkan();
+      } catch (e) {
+        console.warn('[BAHASA] halaman komunitas gagal digambar ulang', e);
       }
     }
   }

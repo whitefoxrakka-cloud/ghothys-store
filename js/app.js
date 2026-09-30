@@ -57,6 +57,7 @@ function attachAppListeners() {
       'open-owner-announcements': 'openAnnouncementManager',
       'open-owner-events': 'openEventManager',
       'open-owner-banners': 'openBannerManager',
+      'buka-komunitas': 'bukaHalamanKomunitas',
       'open-topup-points': 'openTopUpPointsModal',
       'open-faq': 'openFAQModal',
       'open-cara-topup': 'openCaraTopUpModal',
@@ -64,7 +65,6 @@ function attachAppListeners() {
       'close-modal': 'closeCurrentModal',
       'scroll-games': 'scrollGames',
       'toggle-emoji': 'toggleEmojiPicker',
-      'send-community-message': 'sendCommunityMessage',
     };
 
     if (action === 'slider-prev') {

@@ -36,9 +36,9 @@
  <link rel="stylesheet" href="css/animations.css?v=20260925d">
  <link rel="stylesheet" href="css/navigation.css?v=20260925d">
  <link rel="stylesheet" href="css/home.css?v=20260929a">
-  <link rel="stylesheet" href="css/giveaway.css?v=20260925d">
-   <link rel="stylesheet" href="css/event.css?v=20260925d">
-    <link rel="stylesheet" href="css/announcement.css?v=20260925d">
+    <link rel="stylesheet" href="css/event.css?v=20260930c">
+    <link rel="stylesheet" href="css/announcement.css?v=20260930c">
+    <link rel="stylesheet" href="css/community.css?v=20260930c">
     <link rel="stylesheet" href="css/faq.css?v=20260925d">
    <link rel="stylesheet" href="css/profile.css?v=20260925d">
  <link rel="stylesheet" href="css/transaction.css?v=20260925d">
@@ -64,6 +64,7 @@
     </div>
       <div class="hidden md:flex space-x-6">
          <a href="#" class="nav-link font-medium active" style="color:var(--text-primary)" data-page="home-page">Beranda</a>
+         <a href="#" class="nav-link font-medium" style="color:var(--text-primary)" data-page="community-page">Komunitas</a>
          <a href="#" class="nav-link font-medium" style="color:var(--text-primary)" data-page="transactions-page">Transaksi <span id="transaction-count-badge" class="ml-1 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full" style="display:none;">0</span></a>
          <a href="#" class="nav-link font-medium" style="color:var(--text-primary)" data-page="profile-page">Profil</a>
          <a href="#" id="owner-panel-btn" class="owner-panel-open nav-link font-medium text-yellow-400" style="color:var(--text-primary);display:none;" data-action="open-owner-panel">⚙ OWNER PANEL</a>
@@ -163,6 +164,138 @@
    </div>
    </div>
   </section>
+<!-- Halaman Komunitas -->
+<!-- Dibangun ulang 2026-09-30. Section Community yang lama hilang,
+     padahal announcement.css, event.css, content-bridge.js, dan
+     hook router sudah masih ada dan menunggu wadah ini. -->
+<div id="community-page" class="page-content">
+<section class="komunitas">
+<!-- HERO -->
+<div class="an-hero">
+  <div class="an-hero-bg">
+    <div class="an-particle"></div>
+    <div class="an-particle"></div>
+    <div class="an-particle"></div>
+    <div class="an-particle"></div>
+    <div class="an-particle"></div>
+    <div class="an-particle"></div>
+  </div>
+  <div class="an-hero-glow"></div>
+  <div class="an-hero-glow"></div>
+  <div class="an-hero-content">
+    <span class="an-hero-badge">Pusat Komunitas</span>
+    <h1 class="an-hero-title">Ghothys Community</h1>
+    <p class="an-hero-sub">Pengumuman, acara, dan banner resmi dari Ghothys Store. Semuanya ditulis owner di panel admin dan langsung tampil untuk semua pengunjung.</p>
+    <div class="an-hero-meta">
+      <span class="an-hero-stat"><span class="an-hs-val" id="komunitas-angka-pengumuman">0</span> Pengumuman</span>
+      <span class="an-hero-stat"><span class="an-hs-val" id="komunitas-angka-acara">0</span> Acara</span>
+      <span class="an-hero-stat"><span class="an-hs-val" id="komunitas-angka-banner">0</span> Banner</span>
+      <span class="an-hero-stat"><span class="an-hs-val" id="komunitas-angka-total">0</span> Total Konten</span>
+    </div>
+  </div>
+</div>
+<div class="an-divider"></div>
+<!-- NAVIGASI CEPAT -->
+<div class="an-quick-nav">
+  <a class="an-quick-link" href="#komunitas-pengumuman" data-ke="komunitas-pengumuman">Pengumuman</a>
+  <a class="an-quick-link" href="#komunitas-acara" data-ke="komunitas-acara">Acara</a>
+  <a class="an-quick-link" href="#komunitas-banner" data-ke="komunitas-banner">Banner</a>
+</div>
+<!-- PENGUMUMAN YANG DISEMATKAN -->
+<div class="an-block">
+  <div class="an-pinned-bar" id="an-pinned-bar" hidden>
+    <i class="an-pin-icon" data-lucide="pin"></i>
+    <div class="an-pin-info">
+      <div class="an-pin-title" id="an-pinned-title">-</div>
+      <div class="an-pin-desc">Disematkan oleh owner di panel admin</div>
+    </div>
+  </div>
+</div>
+<!-- BANNER MILIK OWNER -->
+<div class="an-block" id="komunitas-banner">
+  <div class="an-block-header">
+    <h2 class="an-block-title"><i data-lucide="image"></i> Banner</h2>
+  </div>
+  <div class="pb-banner">
+    <div class="pb-banner-track" id="banner-viewer"></div>
+  </div>
+  <div class="pb-banner-indikator" id="pb-banner-indikator"></div>
+  <div class="komunitas-kosong" id="banner-kosong" style="display:none">
+    <div class="komunitas-kosong-judul">Belum ada banner</div>
+    <div class="komunitas-kosong-ket">Owner bisa menambah banner lewat tombol Manage Banners di panel admin. Banner berganti sendiri setiap beberapa detik.</div>
+  </div>
+</div>
+<!-- PENGUMUMAN -->
+<div class="an-block" id="komunitas-pengumuman">
+  <div class="an-block-header">
+    <h2 class="an-block-title"><i data-lucide="megaphone"></i> Pengumuman</h2>
+    <span class="an-block-link" id="komunitas-jumlah-pengumuman">0 pengumuman</span>
+  </div>
+  <div class="an-filter-bar">
+    <div class="an-filter-search">
+      <i data-lucide="search"></i>
+      <input id="an-search-input" type="search" placeholder="Cari pengumuman" autocomplete="off" />
+    </div>
+    <select id="an-cat-filter" class="an-filter-select" aria-label="Saring pengumuman menurut kategori">
+      <option value="all">Semua kategori</option>
+      <option value="pinned">Disematkan</option>
+      <option value="info">Pengumuman biasa</option>
+    </select>
+    <select id="an-sort-filter" class="an-filter-select" aria-label="Urutkan pengumuman">
+      <option value="terbaru">Terbaru</option>
+      <option value="terlama">Terlama</option>
+      <option value="judul">Urut judul</option>
+    </select>
+    <div class="an-filter-tabs" role="tablist">
+      <button type="button" class="an-filter-tab active" data-filter="all" aria-selected="true">Semua</button>
+      <button type="button" class="an-filter-tab" data-filter="pinned" aria-selected="false">Disematkan</button>
+      <button type="button" class="an-filter-tab" data-filter="info" aria-selected="false">Biasa</button>
+    </div>
+  </div>
+  <div class="an-grid" id="an-announcement-grid"></div>
+  <div class="komunitas-kosong" id="an-announcement-kosong" style="display:none">
+    <div class="komunitas-kosong-judul">Belum ada pengumuman</div>
+    <div class="komunitas-kosong-ket">Owner bisa menambah pengumuman lewat tombol Manage Announcements di panel admin. Setelah tersimpan ke server, pengumuman langsung muncul di sini.</div>
+  </div>
+</div>
+<!-- ACARA -->
+<div class="an-block" id="komunitas-acara">
+  <div class="an-block-header">
+    <h2 class="an-block-title"><i data-lucide="calendar-days"></i> Acara</h2>
+    <span class="an-block-link" id="komunitas-jumlah-acara">0 acara</span>
+  </div>
+  <div class="ev-hero-cd" id="komunitas-acara-hitung-mundur" hidden>
+    <div id="ev-hero-countdown" style="display:contents"></div>
+  </div>
+  <div class="ev-filter-bar">
+    <div class="ev-filter-search">
+      <i data-lucide="search"></i>
+      <input id="ev-search-input" type="search" placeholder="Cari acara" autocomplete="off" />
+    </div>
+    <select id="ev-status-filter" class="ev-filter-select" aria-label="Saring acara menurut status">
+      <option value="all">Semua status</option>
+      <option value="upcoming">Mendatang</option>
+      <option value="finished">Selesai</option>
+    </select>
+    <select id="ev-sort-filter" class="ev-filter-select" aria-label="Urutkan acara">
+      <option value="terdekat">Terdekat</option>
+      <option value="terlama">Paling awal</option>
+      <option value="judul">Urut judul</option>
+    </select>
+    <div class="ev-filter-tabs" role="tablist">
+      <button type="button" class="ev-filter-tab active" data-filter="all" aria-selected="true">Semua</button>
+      <button type="button" class="ev-filter-tab" data-filter="upcoming" aria-selected="false">Mendatang</button>
+      <button type="button" class="ev-filter-tab" data-filter="finished" aria-selected="false">Selesai</button>
+    </div>
+  </div>
+  <div class="ev-grid" id="ev-event-grid"></div>
+  <div class="komunitas-kosong" id="ev-event-kosong" style="display:none">
+    <div class="komunitas-kosong-judul">Belum ada acara</div>
+    <div class="komunitas-kosong-ket">Owner bisa menambah acara lewat tombol Manage Events di panel admin. Acara yang tanggalnya belum lewat ikut dihitung mundur di atas.</div>
+  </div>
+</div>
+</section>
+</div><!-- community-page selesai -->
   </div><!-- Transactions Page -->
   <div id="transactions-page" class="page-content">
   <section class="w-full py-16 min-h-screen" style="background:var(--bg-primary);">
@@ -799,41 +932,44 @@
                   <button id="owner-open-announcements" data-action="open-owner-announcements" class="px-3 py-1 rounded bg-yellow-400 text-sm">Manage Announcements</button>
                   <button id="owner-open-events" data-action="open-owner-events" class="px-3 py-1 rounded bg-indigo-500 text-sm">Manage Events</button>
                   <button id="owner-open-banners" data-action="open-owner-banners" class="px-3 py-1 rounded bg-pink-500 text-sm">Manage Banners</button>
+                  <button type="button" id="owner-buka-komunitas" data-action="buka-komunitas" class="px-3 py-1 rounded bg-emerald-500 text-sm" title="Buka halaman Komunitas">Lihat Halaman Komunitas</button>
                   <button class="owner-close text-3xl" style="color:var(--text-secondary)">×</button>
                </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-               <div class="rounded-lg p-4" style="background:var(--bg-primary);">
-                  <div class="text-sm">Total Members</div>
-                  <div id="owner-total-members" class="text-2xl font-bold">0</div>
-               </div>
-               <div class="rounded-lg p-4" style="background:var(--bg-primary);">
-                  <div class="text-sm">Members Online</div>
-                  <div id="owner-members-online" class="text-2xl font-bold">0</div>
-               </div>
-               <div class="rounded-lg p-4" style="background:var(--bg-primary);">
-                  <div class="text-sm">Total Posts</div>
-                  <div id="owner-total-posts" class="text-2xl font-bold">0</div>
-               </div>
-               <div class="rounded-lg p-4" style="background:var(--bg-primary);">
-                  <div class="text-sm">Pinned Announcement</div>
-                  <div id="owner-pinned-announcement" class="text-lg">—</div>
-               </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-               <div class="rounded-lg p-4" style="background:var(--bg-primary);">
-                  <div class="text-sm">Upcoming Event</div>
-                  <div id="owner-upcoming-event" class="text-lg">—</div>
-               </div>
-               <div class="rounded-lg p-4" style="background:var(--bg-primary);">
-                  <div class="text-sm">Community Activity</div>
-                            </div>
-               <div class="rounded-lg p-4" style="background:var(--bg-primary);">
-                  <div class="text-sm">Latest Announcement</div>
-                  <div id="owner-latest-announcement" class="text-lg">—</div>
-               </div>
-            </div>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+<div class="rounded-lg p-4" style="background:var(--bg-primary);">
+<div class="text-sm">Total Members</div>
+<div id="owner-total-members" class="text-2xl font-bold">0</div>
+<div class="text-xs" style="color:var(--text-secondary);">Jumlah akun di browser ini</div>
+</div>
+<div class="rounded-lg p-4" style="background:var(--bg-primary);">
+<div class="text-sm">Konten Terpublikasi</div>
+<div id="owner-total-content" class="text-2xl font-bold">0</div>
+<div class="text-xs" style="color:var(--text-secondary);">Tampil di halaman Komunitas</div>
+</div>
+<div class="rounded-lg p-4" style="background:var(--bg-primary);">
+<div class="text-sm">Pengumuman</div>
+<div id="owner-total-announcements" class="text-2xl font-bold">0</div>
+</div>
+<div class="rounded-lg p-4" style="background:var(--bg-primary);">
+<div class="text-sm">Acara</div>
+<div id="owner-total-events" class="text-2xl font-bold">0</div>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<div class="rounded-lg p-4" style="background:var(--bg-primary);">
+<div class="text-sm">Pengumuman Disematkan</div>
+<div id="owner-pinned-announcement" class="text-lg">-</div>
+</div>
+<div class="rounded-lg p-4" id="owner-upcoming-event-kartu" style="background:var(--bg-primary);">
+<div class="text-sm">Acara Mendatang</div>
+<div id="owner-upcoming-event" class="text-lg">-</div>
+</div>
+<div class="rounded-lg p-4" style="background:var(--bg-primary);">
+<div class="text-sm">Pengumuman Terbaru</div>
+<div id="owner-latest-announcement" class="text-lg">-</div>
+</div>
+</div>
 
             <div class="mt-6 rounded-lg p-4" style="background:var(--bg-primary);">
                <div class="text-sm">Latest Event</div>
@@ -897,21 +1033,6 @@
                         <input id="event-title" placeholder="Event Title" class="w-full p-2 rounded" required />
                      </div>
 
-                     <!-- Banner / Gallery Manager (Phase 4) -->
-                     <div id="owner-banners-section" style="display:none;" class="mt-6">
-                        <div class="rounded-lg p-4 mb-4" style="background:var(--bg-primary);">
-                           <h3 class="font-semibold mb-2">Upload Banner</h3>
-                           <div class="mb-2 flex items-center gap-2">
-                              <input id="owner-banner-input" type="file" accept="image/*" style="display:none;" />
-                              <button id="owner-banner-upload-btn" class="px-3 py-1 rounded bg-blue-600 text-white">Choose Image</button>
-                              <span id="owner-banner-upload-hint" class="text-sm text-gray-400">Max 2MB recommended</span>
-                           </div>
-                        </div>
-                        <div class="rounded-lg p-4" style="background:var(--bg-primary);">
-                           <h3 class="font-semibold mb-2">Banners</h3>
-                           <div id="owner-banners-list" class="grid grid-cols-2 md:grid-cols-4 gap-3">No banners yet.</div>
-                        </div>
-                     </div>
                      <div class="mb-2">
                         <input id="event-date" type="datetime-local" class="w-full p-2 rounded" required />
                      </div>
@@ -928,6 +1049,22 @@
                   <div id="owner-events-list" class="space-y-3">No events yet.</div>
                </div>
             </div>
+
+                     <!-- Banner / Gallery Manager (Phase 4) -->
+                     <div id="owner-banners-section" style="display:none;" class="mt-6">
+                        <div class="rounded-lg p-4 mb-4" style="background:var(--bg-primary);">
+                           <h3 class="font-semibold mb-2">Upload Banner</h3>
+                           <div class="mb-2 flex items-center gap-2">
+                              <input id="owner-banner-input" type="file" accept="image/*" style="display:none;" />
+                              <button type="button" id="owner-banner-upload-btn" class="px-3 py-1 rounded bg-blue-600 text-white">Choose Image</button>
+                              <span id="owner-banner-upload-hint" class="text-sm text-gray-400">Max 2MB recommended</span>
+                           </div>
+                        </div>
+                        <div class="rounded-lg p-4" style="background:var(--bg-primary);">
+                           <h3 class="font-semibold mb-2">Banners</h3>
+                           <div id="owner-banners-list" class="grid grid-cols-2 md:grid-cols-4 gap-3">No banners yet.</div>
+                        </div>
+                     </div>
          </div>
       </div>
    </div><!-- Toasts -->
@@ -959,19 +1096,18 @@
  <script src="js/constants.js?v=20260925d"></script>
  <script src="js/storage.js?v=20260925d"></script>
  <script src="js/utilities.js?v=20260925d"></script>
- <script src="js/bahasa.js?v=20260930a"></script>
+ <script src="js/bahasa.js?v=20260930c"></script>
  <script src="js/slider.js?v=20260925d"></script>
  <script src="js/render.js?v=20260929b"></script>
- <script src="js/router.js?v=20260925d"></script>
+ <script src="js/router.js?v=20260930c"></script>
  <script src="js/navigation.js?v=20260925d"></script>
  <script src="js/animations.js?v=20260925d"></script>
 <script src="js/auth.js?v=20260925d"></script>
 <script src="js/profile.js?v=20260925d"></script>
 <script src="js/transactions.js?v=20260925d"></script>
  <script src="js/riwayat.js?v=20260929a"></script>
-<script src="js/giveaway.js?v=20260925d"></script>
-   <script src="js/event.js?v=20260925d"></script>
-    <script src="js/announcement.js?v=20260925d"></script>
+   <script src="js/event.js?v=20260930c"></script>
+   <script src="js/announcement.js?v=20260930c"></script>
    <script src="js/faq.js?v=20260925d"></script>
    <script src="js/modal.js?v=20260925d"></script>
 <script src="js/notify-config.js?v=20260925d"></script>
@@ -983,10 +1119,11 @@
    <script src="js/referral.js?v=20260930b"></script>
    <script src="js/export.js?v=20260930a"></script>
    <script src="js/topup.js?v=20260929a"></script>
-<script src="js/owner.js?v=20260925d"></script>
-				<script src="js/content-bridge.js?v=20260925d"></script>
+   <script src="js/owner.js?v=20260930c"></script>
+   <script src="js/content-bridge.js?v=20260930c"></script>
+   <script src="js/community.js?v=20260930c"></script>
    <script src="js/owner-sync.js?v=20260925d"></script>
 				<script src="js/order-status.js?v=20260925d"></script>
-				<script src="js/app.js?v=20260925d"></script>
+    <script src="js/app.js?v=20260930c"></script>
  <!-- Removed iframe/CLOUDFLARE challenge injection to prevent 404 and MIME errors -->
 </body></html>
