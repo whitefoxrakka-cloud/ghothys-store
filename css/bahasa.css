@@ -1,0 +1,51 @@
+/* ============================================================
+   MULTI-BAHASA
+   Pemilih bahasa ID dan EN di navbar, pojok kiri tombol mode gelap.
+   ============================================================ */
+
+.bahasa-pilih {
+  display: inline-flex;
+  align-items: stretch;
+  padding: 2px;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+.bahasa-tombol {
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.bahasa-tombol:hover {
+  color: var(--text-primary);
+  background: rgba(168, 85, 247, 0.14);
+}
+
+.bahasa-tombol.aktif {
+  background: #a855f7;
+  color: #ffffff;
+}
+
+.bahasa-tombol.aktif:hover {
+  background: #9333ea;
+  color: #ffffff;
+}
+
+/* Varian untuk layar sangat sempit: cukup inisial saja. */
+@media (max-width: 420px) {
+  .bahasa-tombol {
+    padding: 5px 7px;
+    font-size: 10px;
+  }
+}

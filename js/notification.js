@@ -261,6 +261,45 @@
 	}
 
 	/**
+	 * Send to email via Formspree
+	 * @param {Object} order Order object
+	 * @param {string} formspreeId Formspree form ID (e.g. "mdekddgg")
+	 * @returns {Promise<Object>} Result
+	 */
+	async function sendToEmail(order, formspreeId) {
+		if (!formspreeId) {
+			return { success: false, skipped: true, channel: 'email', reason: 'no formspree id configured' };
+		}
+		try {
+			const endpoint = 'https://formspree.io/f/' + formspreeId;
+			const payload = {
+				_subject: 'Order Baru ' + order.id,
+				order_id: order.id,
+				game: order.game,
+				uid: order.uid,
+				server: order.server,
+				item: order.item,
+				price: order.price ? ('Rp ' + Number(order.price).toLocaleString('id-ID')) : '-',
+				payment: order.payment,
+				customer: order.customerName || '-',
+				time: order.timestamp,
+				message: formatOrderSummary(order)
+			};
+			const response = await fetch(endpoint, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+			if (!response.ok) throw new Error('Formspree HTTP ' + response.status);
+			console.log('[EMAIL SENT]', order.id);
+			return { success: true, channel: 'email' };
+		} catch (error) {
+			console.error('[EMAIL FAILED]', order.id, error);
+			return { success: false, channel: 'email', error: error.message };
+		}
+	}
+
+	/**
 	 * Send to Telegram via secure relay
 	 * @param {Object} order Order object
 	 * @param {string} relayUrl Relay URL (keeps bot token server-side)
@@ -316,7 +355,7 @@
 			results.push(await sendToDiscord(order, cfg.discordWebhook));
 			results.push(await sendToTelegram(order, cfg.telegramRelay));
 		}
-		// Email via Formspree
+		// Email via Formspree works alongside the relay (form ID is public-safe)
 		results.push(await sendToEmail(order, cfg.formspreeId));
 		const delivered = results.filter(r => r.success).length;
 		const skipped = results.filter(r => r.skipped).length;

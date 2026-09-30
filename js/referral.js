@@ -247,12 +247,12 @@
     if (pengundang) {
       window.showToast && window.showToast(
         'Kode Referral Ditemukan',
-        'Bonus ' + POIN_TEMAN + ' poin menunggu Anda daftar'
+        kalimat('Bonus {poin} poin menunggu Anda daftar', { poin: POIN_TEMAN })
       );
     } else {
       window.showToast && window.showToast(
         'Kode Referral Disimpan',
-        'Kode ' + kodeDariUrl + ' akan dipakai saat Anda daftar'
+        kalimat('Kode {kode} akan dipakai saat Anda daftar', { kode: kodeDariUrl })
       );
     }
     return kodeDariUrl;
@@ -299,12 +299,15 @@
     const data = muatData();
 
     if (data.pakai[email]) {
-      return { ok: false, error: 'Akun ini sudah memakai kode ' + data.pakai[email] };
+      return {
+        ok: false,
+        error: kalimat('Akun ini sudah memakai kode {kode}', { kode: data.pakai[email] }),
+      };
     }
 
     const pengundang = data.kode[bersih];
     if (!pengundang) {
-      return { ok: false, error: 'Kode ' + bersih + ' tidak dikenal' };
+      return { ok: false, error: kalimat('Kode {kode} tidak dikenal', { kode: bersih }) };
     }
     if (pengundang.email === email) {
       return { ok: false, error: 'Kode sendiri tidak bisa dipakai' };
@@ -433,6 +436,16 @@
      PANEL DI HALAMAN PROFIL
      ============================================================ */
 
+  // Kalimat yang memuat kode atau angka dibuat dari pola. Pola lebih
+  // dulu diterjemahkan, baru isinya disisipkan, supaya angka rupiah
+  // dan kode tidak ikut diterjemahkan.
+  function kalimat(pola, isi) {
+    const dasar = typeof window.t === 'function' ? window.t(pola) : pola;
+    return String(dasar).replace(/\{(\w+)\}/g, function (penanda, nama) {
+      return isi && isi[nama] !== undefined ? String(isi[nama]) : penanda;
+    });
+  }
+
   function statusCatatan(catatan) {
     if (catatan.status === 'order') {
       return '<span class="ref-pill bagus">Reward ' + rupiah(catatan.reward) + '</span>';
@@ -480,10 +493,14 @@
 
     const tautan = tautanUndangan(r.kode);
     const barisTertunda = r.tertunda
-      ? '<p class="ref-info">Kode <strong>' + aman(r.tertunda) + '</strong> akan dipakai otomatis saat Anda daftar atau login.</p>'
+      ? '<p class="ref-info">' +
+        aman(kalimat('Kode {kode} akan dipakai otomatis saat Anda daftar atau login.', { kode: r.tertunda })) +
+        '</p>'
       : '';
     const barisDipakai = r.sudahPakai
-      ? '<p class="ref-info">Akun Anda memakai kode <strong>' + aman(r.sudahPakai) + '</strong>. Kode hanya bisa dipakai satu kali.</p>'
+      ? '<p class="ref-info">' +
+        aman(kalimat('Akun Anda memakai kode {kode}. Kode hanya bisa dipakai satu kali.', { kode: r.sudahPakai })) +
+        '</p>'
       : '';
 
     wadah.innerHTML =
@@ -504,7 +521,10 @@
       '</div>' +
       '<a id="ref-btn-wa" class="ref-tombol hijau" href="https://wa.me/?text=' +
       encodeURIComponent(
-        'Halo, aku punya kode referral ' + r.kode + ' di Ghothys Store. Daftar di sini: ' + tautan
+        kalimat('Halo, aku punya kode referral {kode} di Ghothys Store. Daftar di sini: {tautan}', {
+          kode: r.kode,
+          tautan: tautan,
+        })
       ) +
       '" target="_blank" rel="noopener noreferrer">Bagikan ke WhatsApp</a>' +
       '</div>' +
@@ -521,7 +541,9 @@
       '<div class="ref-form">' +
       '<label class="ref-label">Punya kode teman?</label>' +
       '<div class="ref-baris-salin">' +
-      '<input type="text" id="ref-input-kode" class="ref-input-kode" placeholder="Masukkan kode, contoh ' + aman(r.kode) + '" autocomplete="off">' +
+      '<input type="text" id="ref-input-kode" class="ref-input-kode" placeholder="' +
+      aman(kalimat('Masukkan kode, contoh {kode}', { kode: r.kode })) +
+      '" autocomplete="off">' +
       '<button type="button" id="ref-btn-gunakan" class="ref-tombol">Gunakan</button>' +
       '</div>' +
       '<p id="ref-status-kode" class="ref-status"></p>' +
@@ -529,11 +551,21 @@
 
       '<div class="ref-block">' +
       '<label class="ref-label">Aturan dan daftar teman</label>' +
-      '<p class="ref-petunjuk">Teman yang daftar memakai kode Anda dapat ' + POIN_TEMAN +
-      ' poin. Anda mendapat ' + BATAS_PERSEN + ' persen dari order pertama teman, minimal order ' +
-      rupiah(ORDER_MINIMAL) + ' dan maksimal reward ' + rupiah(PLAFON_REWARD) + ' per teman.</p>' +
+      '<p class="ref-petunjuk">' +
+      kalimat('Teman yang daftar memakai kode Anda dapat {poin} poin.', { poin: POIN_TEMAN }) +
+      ' ' +
+      kalimat(
+        'Anda mendapat {persen} persen dari order pertama teman, minimal order {minimal} dan maksimal reward {plafon} per teman.',
+        { persen: BATAS_PERSEN, minimal: rupiah(ORDER_MINIMAL), plafon: rupiah(PLAFON_REWARD) }
+      ) +
+      '</p>' +
       '<ul class="ref-daftar">' + gambarDaftar(r.daftar) + '</ul>' +
-      '<p class="ref-kaki">Reward dihitung di perangkat ini. Kalau teman mendaftar di perangkat lain, reward-nya belum bisa muncul sampai sistemnya dipakai lewat worker.</p>' +
+      '<p class="ref-kaki">' +
+      kalimat(
+        'Reward dihitung di perangkat ini. Kalau teman mendaftar di perangkat lain, reward-nya belum bisa muncul sampai sistemnya dipakai lewat worker.',
+        {}
+      ) +
+      '</p>' +
       '</div>' +
       '</div>';
 
@@ -566,9 +598,16 @@
           window.showErrorToast && window.showErrorToast('Kode Referral Ditolak', hasil.error);
           return;
         }
-        statusKode.textContent = 'Kode ' + hasil.kode + ' dipakai. Bonus ' + hasil.poin + ' poin ditambahkan.';
+        statusKode.textContent = kalimat('Kode {kode} dipakai. Bonus {poin} poin ditambahkan.', {
+          kode: hasil.kode,
+          poin: hasil.poin,
+        });
         statusKode.className = 'ref-status bagus';
-        window.showToast && window.showToast('Kode Referral Dipakai', 'Bonus ' + hasil.poin + ' poin ditambahkan');
+        window.showToast &&
+          window.showToast(
+            'Kode Referral Dipakai',
+            kalimat('Bonus {poin} poin ditambahkan', { poin: hasil.poin })
+          );
         if (typeof window.updateUI === 'function') window.updateUI();
         pasangPanel();
       };

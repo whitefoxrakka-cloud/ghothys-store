@@ -10,6 +10,12 @@
 
   const STORAGE_KEY = 'ghothys_transactions';
 
+  // Judul kolom ikut bahasa yang sedang dipakai. Kalau modul bahasa
+  // belum termuat, teks aslinya dipakai apa adanya.
+  function t(teks) {
+    return typeof window.t === 'function' ? window.t(teks) : teks;
+  }
+
   function getTransactions() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -48,17 +54,17 @@
 
   function buildCsv(transactions) {
     const headers = [
-      'Tanggal',
+      t('Tanggal'),
       'Order ID',
-      'Game',
-      'Paket',
-      'Harga',
-      'Jumlah',
-      'Metode Bayar',
-      'Status',
-      'Poin Diperoleh',
-      'Kode Promo',
-      'Potongan Promo'
+      t('Game'),
+      t('Paket'),
+      t('Harga'),
+      t('Jumlah'),
+      t('Metode Bayar'),
+      t('Status'),
+      t('Poin Diperoleh'),
+      t('Kode Promo'),
+      t('Potongan Promo')
     ];
 
     const rows = transactions.map(t => [
@@ -133,15 +139,21 @@
       // Header
       doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
-      doc.text('Riwayat Transaksi Ghothys Store', pageWidth / 2, y, { align: 'center' });
+      doc.text(t('Riwayat Transaksi Ghothys Store'), pageWidth / 2, y, { align: 'center' });
       y += 20;
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text('Dicetak pada: ' + new Date().toLocaleString('id-ID'), pageWidth / 2, y, { align: 'center' });
+      const now = new Date();
+      const bahasaTanggal = typeof window.Bahasa !== 'undefined' && window.Bahasa.ambil() === 'en'
+        ? 'en-US'
+        : 'id-ID';
+      doc.text(t('Dicetak pada:') + ' ' + now.toLocaleString(bahasaTanggal), pageWidth / 2, y, {
+        align: 'center',
+      });
       y += 24;
 
       // Table
-      const headers = ['Tanggal', 'Order ID', 'Game', 'Paket', 'Harga', 'Status'];
+      const headers = [t('Tanggal'), 'Order ID', t('Game'), t('Paket'), t('Harga'), t('Status')];
       const colWidths = [80, 90, 70, 80, 70, 60];
       let x = margin;
 
