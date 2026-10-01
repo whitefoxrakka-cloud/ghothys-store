@@ -16,8 +16,8 @@
       menjalankan ulang penyaringan agar kartu yang baru masuk
       ikut Difilter.
 
-   Semua isi modul ini hanya(additif). Modul tidak menimpa
-   definisi yang sudah ada; ia memakai yang ada bila ada.
+   Semua isi modul ini bersifat tambahan. Modul tidak menimpa
+   definisi yang sudah ada; ia memakai definisi itu bila sudah ada.
    ============================================================ */
 
 (function () {
@@ -146,17 +146,34 @@
 
     wadah.querySelectorAll('.an-card, .ev-card').forEach(pasangBookmark);
 
-    /* Buka atau tutup deskripsi kartu yang terpotong. */
+    /* Buka atau tutup deskripsi kartu yang terpotong.
+       Yang penting di sini: kelas .kartu-buka harus punya aturan
+       CSS, kalau tidak kliknya sia-sia. */
     wadah.querySelectorAll('.an-card-desc, .ev-card-desc').forEach(function (paragraf) {
       if (paragraf.dataset.terpasang === '1') return;
       paragraf.dataset.terpasang = '1';
+      paragraf.classList.add('klik-buka');
+      paragraf.setAttribute('role', 'button');
+      paragraf.setAttribute('tabindex', '0');
       paragraf.title = 'Klik untuk baca penuh';
-      paragraf.style.cursor = 'pointer';
-      paragraf.addEventListener('click', function () {
-        paragraf.classList.toggle('kartu-buka');
+
+      function segarkanJudul() {
         var buka = paragraf.classList.contains('kartu-buka');
         paragraf.title = buka ? 'Klik untuk ciutkan' : 'Klik untuk baca penuh';
+        paragraf.setAttribute('aria-expanded', buka ? 'true' : 'false');
+      }
+
+      paragraf.addEventListener('click', function () {
+        paragraf.classList.toggle('kartu-buka');
+        segarkanJudul();
       });
+      paragraf.addEventListener('keydown', function (kejadian) {
+        if (kejadian.key !== 'Enter' && kejadian.key !== ' ') return;
+        kejadian.preventDefault();
+        paragraf.classList.toggle('kartu-buka');
+        segarkanJudul();
+      });
+      segarkanJudul();
     });
 
     terapkanTanda();
@@ -243,9 +260,43 @@
       isiStatis = grid.innerHTML;
     }
 
-    var jumlahKartu = grid.querySelectorAll('.an-card, .ev-card').length;
-    grid.style.display = jumlahKartu ? '' : 'none';
-    kosong.style.display = jumlahKartu ? 'none' : '';
+    /* Yang dihitung bukan jumlah kartu, tapi jumlah kartu yang
+       benar-benar terlihat. Kalau semua kartu tersaring oleh
+       pencarian atau filter, grid tetap ada isinya tapi pengunjung
+       melihat layar kosong tanpa penjelasan. Dua keadaan itu
+       butuh dua pesan yang berbeda. */
+    var semua = Array.prototype.slice.call(
+      grid.querySelectorAll('.an-card, .ev-card')
+    );
+    var terlihat = semua.filter(function (kartu) {
+      return !(kartu.hidden || kartu.style.display === 'none');
+    });
+
+    var adaKartu = semua.length > 0;
+    var adaTerlihat = terlihat.length > 0;
+
+    /* "Belum ada X" jujur hanya kalau memang belum ada isinya sama
+       sekali. Kalau isinya ada tapi sedang tersaring, pesannya
+       berubah jadi "tidak ada yang cocok". */
+    /* Panel kosong punya dua pasangan teks: yang biasa, dan yang
+       khusus untuk hasil saring. Yang mana yang ditampilkan
+       ditentukan di sini. */
+    var judul = kosong.querySelector('.komunitas-kosong-judul:not(.komunitas-kosong-saring)');
+    var judulSaring = kosong.querySelector('.komunitas-kosong-saring');
+    if (judulSaring) {
+      judulSaring.hidden = !adaKartu;
+      var pasangan = kosong.children;
+      for (var i = 0; i < pasangan.length; i++) {
+        if (pasangan[i] === judulSaring) continue;
+        if (pasangan[i].classList.contains('komunitas-kosong-judul') ||
+            pasangan[i].classList.contains('komunitas-kosong-ket')) {
+          pasangan[i].hidden = adaKartu;
+        }
+      }
+    }
+
+    grid.style.display = adaTerlihat ? '' : 'none';
+    kosong.style.display = adaTerlihat ? 'none' : '';
   }
 
   window.pasangStatusKosong = function () {
@@ -265,7 +316,21 @@
 
     var ada = jalur.querySelectorAll('.pb-banner-item').length > 0;
     jalur.style.display = ada ? '' : 'none';
-    if (kosong) kosong.style.display = ada ? 'none' : '';
+    if (kosong) {
+      kosong.style.display = ada ? 'none' : '';
+      /* Banner tidak punya penyaringan, jadi pesan "tidak ada yang
+         cocok" tidak pernah dipakai di sini. */
+      var judulSaring = kosong.querySelector('.komunitas-kosong-saring');
+      if (judulSaring) judulSaring.hidden = true;
+      var pasangan = kosong.children;
+      for (var i = 0; i < pasangan.length; i++) {
+        if (pasangan[i] === judulSaring) continue;
+        if (pasangan[i].classList.contains('komunitas-kosong-judul') ||
+            pasangan[i].classList.contains('komunitas-kosong-ket')) {
+          pasangan[i].hidden = false;
+        }
+      }
+    }
 
     /* Titik penanda tidak boleh tertinggal dari banner yang sudah
        diambil owner. */

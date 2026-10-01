@@ -222,16 +222,6 @@ function attachAppListeners() {
     topupForm.addEventListener('submit', window.handleTopUpWithBackend);
   }
 
-  const commInput = document.getElementById('comm-message-input');
-  if (commInput) {
-    commInput.addEventListener('keydown', event => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        if (typeof sendCommunityMessage === 'function') sendCommunityMessage();
-      }
-    });
-  }
-
   const notificationCheckboxes = [
     { id: 'notif-email', type: 'email' },
     { id: 'notif-whatsapp', type: 'whatsapp' },

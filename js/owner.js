@@ -323,6 +323,7 @@
     data.banners.push(banner);
     saveOwnerData(data);
     if(typeof window.renderBanners === 'function') window.renderBanners();
+    if(typeof window.renderOwnerDashboard === 'function') window.renderOwnerDashboard();
   };
 
   window.deleteOwnerBanner = function(id){

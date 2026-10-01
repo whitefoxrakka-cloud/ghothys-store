@@ -143,7 +143,11 @@
 
     const q = (searchInput ? searchInput.value : '').trim().toLowerCase();
     const status = statusFilter ? statusFilter.value : 'all';
-    const urutan = sortFilter ? sortFilter.value : 'terdekat';
+    /* Nilai dropdown bisa saja tidak dikenal kalau markup berubah.
+       Diamkan ke bawaan supaya kartu tidak tertinggal tanpa urutan. */
+    const urutanYangAda = ['terdekat', 'terlama', 'judul'];
+    const nilaiUrutan = sortFilter ? sortFilter.value : 'terdekat';
+    const urutan = urutanYangAda.indexOf(nilaiUrutan) === -1 ? 'terdekat' : nilaiUrutan;
 
     const lolos = semua.filter((kartu) => {
       const judul = (kartu.dataset.title || '').toLowerCase();
@@ -164,16 +168,23 @@
         const tb = waktuKartu(b);
         if (ta !== null && tb !== null && ta !== tb) return ta - tb;
       } else {
-        /* Terdekat: yang belum lewat paling atas, lalu yang paling
-           lama selesai, lalu acara tanpa tanggal. */
+        /* Terdekat: yang belum lewat paling atas (paling dekat
+           dahulu), lalu yang sudah lewat (paling baru selesai
+           dahulu), lalu acara tanpa tanggal.
+           Versi lama memakai Math.abs(waktu - sekarang), yang
+           membuat acara lama ikut naik ke atas bersama acara
+           mendatang sehingga mana yang akan datang jadi kabur. */
         const sekarang = new Date().getTime();
         const nilai = (kartu) => {
           const waktu = waktuKartu(kartu);
-          if (waktu === null) return Number.MAX_SAFE_INTEGER;
-          return Math.abs(waktu - sekarang);
+          if (waktu === null) return [2, 0];
+          if (waktu >= sekarang) return [0, waktu];
+          return [1, -waktu];
         };
-        const beda = nilai(a) - nilai(b);
-        if (beda !== 0) return beda;
+        const na = nilai(a);
+        const nb = nilai(b);
+        if (na[0] !== nb[0]) return na[0] - nb[0];
+        if (na[1] !== nb[1]) return na[1] - nb[1];
       }
       return urutanAwal.get(a) - urutanAwal.get(b);
     });
@@ -185,6 +196,14 @@
       grid.appendChild(fragmen);
     }
     urut.forEach(kartu => { kartu.hidden = !lolosSatu.has(kartu); });
+
+    /* Pengumuman punya perbaruiStatusKosong sendiri; acara belum,
+       sehingga menyaring sampai nol hasil meninggalkan area kosong
+       tanpa pesan. Dipanggil setelah hidden diurus supaya
+       community.js menghitung kartu yang benar-benar terlihat. */
+    if (typeof window.pasangStatusKosong === 'function') {
+      window.pasangStatusKosong();
+    }
   }
 
   /* ── Akordeon ── */

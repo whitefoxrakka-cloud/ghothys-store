@@ -88,6 +88,27 @@
   overflow: hidden;
 }
 
+/* ---------- 3b. Deskripsi ditekan dan dibuka ---------- */
+/* community.js memasang .kartu-buka saat deskripsi diklik, tapi
+   belum ada aturannya, jadi kliknya tidak mengubah apa pun. Aturan
+   inilah yang melepas pemotongan teks dan menampilkan isi penuh.
+   .an-card-desc punya pemotongan sendiri di announcement.css, jadi
+   ikut dibuka di sini supaya keduanya berlaku seragam. */
+.an-card-desc.kartu-buka,
+.ev-card-desc.kartu-buka {
+  display: block;
+  -webkit-line-clamp: none;
+  line-clamp: none;
+  overflow: visible;
+}
+
+/* Tanda bahwa teksnya bisa diklik: garis bawah putus-putus. */
+.klik-buka {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+
 /* ---------- 4. Banner milik owner ---------- */
 .pb-banner {
   position: relative;

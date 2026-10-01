@@ -366,6 +366,11 @@
     'Owner bisa menambah pengumuman lewat tombol Manage Announcements di panel admin. Setelah tersimpan ke server, pengumuman langsung muncul di sini.':
     'The owner can add announcements through the Manage Announcements button in the admin panel. Once it is saved to the server, the announcement shows up here right away.',
     '{n} pengumuman': '{n} announcements',
+    // Pesan saat penyaringan tidak menemukan apa pun
+    'Tidak ada pengumuman yang cocok': 'No matching announcements',
+    'Tidak ada acara yang cocok': 'No matching events',
+    'Coba kata kunci lain, atau kembalikan saringan ke Semua.':
+    'Try a different keyword, or set the filter back to All.',
     // Penyaring acara
     'Acara': 'Events',
     'Cari acara': 'Search events',

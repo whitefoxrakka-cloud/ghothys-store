@@ -10,7 +10,7 @@
    - Status dicek dengan GET /admin/session (butuh cookie valid).
    - Kalau belum login, panel menampilkan form email + password.
      Setelah berhasil, konten yang tadi gagal langsung dikirim ulang
-     tanpa owner harus 저장 ulang.
+     tanpa owner harus menyimpan ulang.
    - Tidak ada token yang disimpan di localStorage/sessionStorage,
      dan tidak ada password yang disimpan di mana pun.
    - Saat belum login admin, tombol simpan di panel (Announcement/
@@ -149,20 +149,37 @@
     var modal = el('owner-panel-modal');
     if(modal && !modal.dataset.saveGuard){
       modal.dataset.saveGuard = '1';
+
+      function mintaLogin(){
+        var statusEl = el('owner-sync-status');
+        if(statusEl) statusEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setStatus('Login dulu di kotak "Sinkronisasi Konten ke Server" di atas.', '#f87171');
+        tampilkanLogin(true);
+        var emailIn = el('owner-sync-email');
+        if(emailIn) emailIn.focus();
+      }
+
       modal.addEventListener('click', function(ev){
         if(window.__ghothysOwnerAuthed === true) return;
         var t = ev.target;
         if(!(t instanceof HTMLElement)) return;
+
+        /* Tombol simpan pengumuman dan acara. */
         var formEl = t.closest('#owner-announcement-form, #owner-event-form');
         if(formEl && (t.tagName === 'BUTTON' || t.tagName === 'INPUT') && t.type === 'submit'){
           ev.preventDefault();
           ev.stopPropagation();
-          var statusEl = el('owner-sync-status');
-          if(statusEl) statusEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          setStatus('Login dulu di kotak "Sinkronisasi Konten ke Server" di atas.', '#f87171');
-          tampilkanLogin(true);
-          var emailIn = el('owner-sync-email');
-          if(emailIn) emailIn.focus();
+          mintaLogin();
+          return;
+        }
+
+        /* Tombol Choose Image pada Manage Banners. Tombol ini
+           type="button", jadi tidak tertangkap dua aturan di atas. */
+        var tombolBanner = t.closest('#owner-banner-upload-btn');
+        if(tombolBanner){
+          ev.preventDefault();
+          ev.stopPropagation();
+          mintaLogin();
         }
       }, true);
     }

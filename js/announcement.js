@@ -76,7 +76,11 @@
 
     const q = (searchInput ? searchInput.value : '').trim().toLowerCase();
     const cat = catFilter ? catFilter.value : 'all';
-    const urutan = sortFilter ? sortFilter.value : 'terbaru';
+    /* Nilai dropdown bisa saja tidak dikenal kalau markup berubah.
+       Diamkan ke bawaan supaya kartu tidak tertinggal tanpa urutan. */
+    const urutanYangAda = ['terbaru', 'terlama', 'judul'];
+    const nilaiUrutan = sortFilter ? sortFilter.value : 'terbaru';
+    const urutan = urutanYangAda.indexOf(nilaiUrutan) === -1 ? 'terbaru' : nilaiUrutan;
 
     const lolos = semua.filter((kartu) => {
       const judul = (kartu.dataset.title || '').toLowerCase();
@@ -118,10 +122,18 @@
     perbaruiStatusKosong();
   }
 
-  /* Status kosong hanya ditampilkan kalau grid benar-benar tidak
-     punya satu pun kartu. Kalau isinya ada tapi sedang tersaring,
-     grid yang bicara, jadi panel kosong disembunyikan. */
+  /* Penyesuaian panel kosong dan(grid) setelah penyaringan.
+     Dulu hanya menghitung kartu, sehingga menyaring sampai nol
+     hasil tetap menyisakan area kosong tanpa penjelasan. Sekarang
+     delegate ke community.js yang sudah membedakan "belum ada
+     isinya" dari "ada isinya tapi tidak cocok". Kalau community.js
+     belum termuat, dipakai hitungan kasar agar tidak merusak
+     tampilan. */
   function perbaruiStatusKosong() {
+    if (typeof window.pasangStatusKosong === 'function') {
+      window.pasangStatusKosong();
+      return;
+    }
     const kosong = document.getElementById('an-announcement-kosong');
     const grid = document.getElementById('an-announcement-grid');
     if (!kosong || !grid) return;
