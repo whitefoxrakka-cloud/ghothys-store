@@ -36,9 +36,9 @@
  <link rel="stylesheet" href="css/animations.css?v=20260925d">
  <link rel="stylesheet" href="css/navigation.css?v=20260925d">
  <link rel="stylesheet" href="css/home.css?v=20260929a">
-    <link rel="stylesheet" href="css/event.css?v=20260930d">
-    <link rel="stylesheet" href="css/announcement.css?v=20260930d">
-    <link rel="stylesheet" href="css/community.css?v=20260930d">
+    <link rel="stylesheet" href="css/event.css?v=20261001b">
+    <link rel="stylesheet" href="css/announcement.css?v=20261001b">
+    <link rel="stylesheet" href="css/community.css?v=20261001b">
     <link rel="stylesheet" href="css/faq.css?v=20260925d">
    <link rel="stylesheet" href="css/profile.css?v=20260925d">
  <link rel="stylesheet" href="css/transaction.css?v=20260925d">
@@ -185,13 +185,14 @@
   <div class="an-hero-content">
     <span class="an-hero-badge">Pusat Komunitas</span>
     <h1 class="an-hero-title">Ghothys Community</h1>
-    <p class="an-hero-sub">Pengumuman, acara, dan banner resmi dari Ghothys Store. Semuanya ditulis owner di panel admin dan langsung tampil untuk semua pengunjung.</p>
+    <p class="an-hero-sub">Semua kabar resmi Ghothys Store dikumpulkan di satu halaman ini: pengumuman terbaru, acara yang akan datang, dan banner yang sedang tayang.</p>
     <div class="an-hero-meta">
       <span class="an-hero-stat"><span class="an-hs-val" id="komunitas-angka-pengumuman">0</span> Pengumuman</span>
       <span class="an-hero-stat"><span class="an-hs-val" id="komunitas-angka-acara">0</span> Acara</span>
       <span class="an-hero-stat"><span class="an-hs-val" id="komunitas-angka-banner">0</span> Banner</span>
       <span class="an-hero-stat"><span class="an-hs-val" id="komunitas-angka-total">0</span> Total Konten</span>
     </div>
+    <p class="an-hero-hint" id="komunitas-hero-hint" hidden>Belum ada pengumuman atau acara yang dipublikasikan. Kabar terbaru akan muncul di halaman ini.</p>
   </div>
 </div>
 <div class="an-divider"></div>
@@ -207,7 +208,7 @@
     <i class="an-pin-icon" data-lucide="pin"></i>
     <div class="an-pin-info">
       <div class="an-pin-title" id="an-pinned-title">-</div>
-      <div class="an-pin-desc">Disematkan oleh owner di panel admin</div>
+      <div class="an-pin-desc">Disematkan oleh Ghothys Store</div>
     </div>
   </div>
 </div>
@@ -221,8 +222,9 @@
   </div>
   <div class="pb-banner-indikator" id="pb-banner-indikator"></div>
   <div class="komunitas-kosong" id="banner-kosong" style="display:none">
+    <div class="komunitas-kosong-ikon"><i data-lucide="image-off"></i></div>
     <div class="komunitas-kosong-judul">Belum ada banner</div>
-    <div class="komunitas-kosong-ket">Owner bisa menambah banner lewat tombol Manage Banners di panel admin. Banner berganti sendiri setiap beberapa detik.</div>
+    <div class="komunitas-kosong-ket">Banner resmi dari Ghothys Store akan tampil di sini begitu diterbitkan.</div>
   </div>
 </div>
 <!-- PENGUMUMAN -->
@@ -254,10 +256,11 @@
   </div>
   <div class="an-grid" id="an-announcement-grid"></div>
   <div class="komunitas-kosong" id="an-announcement-kosong" style="display:none">
+    <div class="komunitas-kosong-ikon"><i data-lucide="megaphone-off"></i></div>
     <div class="komunitas-kosong-judul">Belum ada pengumuman</div>
     <div class="komunitas-kosong-judul komunitas-kosong-saring" hidden>Tidak ada pengumuman yang cocok</div>
     <div class="komunitas-kosong-ket" hidden>Coba kata kunci lain, atau kembalikan saringan ke Semua.</div>
-    <div class="komunitas-kosong-ket">Owner bisa menambah pengumuman lewat tombol Manage Announcements di panel admin. Setelah tersimpan ke server, pengumuman langsung muncul di sini.</div>
+    <div class="komunitas-kosong-ket">Kabar terbaru dari Ghothys Store akan muncul di sini. Cek lagi sebentar lagi.</div>
   </div>
 </div>
 <!-- ACARA -->
@@ -292,10 +295,11 @@
   </div>
   <div class="ev-grid" id="ev-event-grid"></div>
   <div class="komunitas-kosong" id="ev-event-kosong" style="display:none">
+    <div class="komunitas-kosong-ikon"><i data-lucide="calendar-off"></i></div>
     <div class="komunitas-kosong-judul">Belum ada acara</div>
     <div class="komunitas-kosong-judul komunitas-kosong-saring" hidden>Tidak ada acara yang cocok</div>
     <div class="komunitas-kosong-ket" hidden>Coba kata kunci lain, atau kembalikan saringan ke Semua.</div>
-    <div class="komunitas-kosong-ket">Owner bisa menambah acara lewat tombol Manage Events di panel admin. Acara yang tanggalnya belum lewat ikut dihitung mundur di atas.</div>
+    <div class="komunitas-kosong-ket">Acara dan promo terbaru akan diumumkan lebih dulu di sini.</div>
   </div>
 </div>
 </section>
@@ -1100,18 +1104,18 @@
  <script src="js/constants.js?v=20260925d"></script>
  <script src="js/storage.js?v=20260925d"></script>
  <script src="js/utilities.js?v=20260925d"></script>
- <script src="js/bahasa.js?v=20260930d"></script>
+ <script src="js/bahasa.js?v=20261001b"></script>
  <script src="js/slider.js?v=20260925d"></script>
  <script src="js/render.js?v=20261001a"></script>
- <script src="js/router.js?v=20260930d"></script>
+ <script src="js/router.js?v=20261001b"></script>
  <script src="js/navigation.js?v=20260925d"></script>
  <script src="js/animations.js?v=20260925d"></script>
 <script src="js/auth.js?v=20260925d"></script>
 <script src="js/profile.js?v=20260925d"></script>
 <script src="js/transactions.js?v=20260925d"></script>
  <script src="js/riwayat.js?v=20260929a"></script>
-   <script src="js/event.js?v=20260930d"></script>
-   <script src="js/announcement.js?v=20260930d"></script>
+   <script src="js/event.js?v=20261001b"></script>
+   <script src="js/announcement.js?v=20261001b"></script>
    <script src="js/faq.js?v=20260925d"></script>
    <script src="js/modal.js?v=20260925d"></script>
 <script src="js/notify-config.js?v=20260925d"></script>
@@ -1123,11 +1127,11 @@
    <script src="js/referral.js?v=20260930b"></script>
    <script src="js/export.js?v=20260930a"></script>
    <script src="js/topup.js?v=20260929a"></script>
-   <script src="js/owner.js?v=20260930d"></script>
-   <script src="js/content-bridge.js?v=20260930d"></script>
-   <script src="js/community.js?v=20260930d"></script>
-   <script src="js/owner-sync.js?v=20260930d"></script>
+   <script src="js/owner.js?v=20261001b"></script>
+   <script src="js/content-bridge.js?v=20261001b"></script>
+   <script src="js/community.js?v=20261001b"></script>
+   <script src="js/owner-sync.js?v=20261001b"></script>
 				<script src="js/order-status.js?v=20260925d"></script>
-    <script src="js/app.js?v=20260930d"></script>
+    <script src="js/app.js?v=20261001b"></script>
  <!-- Removed iframe/CLOUDFLARE challenge injection to prevent 404 and MIME errors -->
 </body></html>

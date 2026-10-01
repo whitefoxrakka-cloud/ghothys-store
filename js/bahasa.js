@@ -347,11 +347,13 @@
     // Halaman Komunitas
     'Komunitas': 'Community',
     'Pusat Komunitas': 'Community Hub',
-    'Pengumuman, acara, dan banner resmi dari Ghothys Store. Semuanya ditulis owner di panel admin dan langsung tampil untuk semua pengunjung.':
-    'Official announcements, events, and banners from Ghothys Store. Everything is written by the owner in the admin panel and shows up for every visitor right away.',
+    'Semua kabar resmi Ghothys Store dikumpulkan di satu halaman ini: pengumuman terbaru, acara yang akan datang, dan banner yang sedang tayang.':
+    'All official news from Ghothys Store is gathered on this one page: the latest announcements, upcoming events, and banners currently running.',
+    'Belum ada pengumuman atau acara yang dipublikasikan. Kabar terbaru akan muncul di halaman ini.':
+    'No announcements or events have been published yet. The latest news will appear on this page.',
     'Total Konten': 'Total Content',
-    'Disematkan oleh owner di panel admin':
-    'Pinned by the owner in the admin panel',
+    'Disematkan oleh Ghothys Store':
+    'Pinned by Ghothys Store',
     // Penyaring pengumuman
     'Pengumuman': 'Announcements',
     'Cari pengumuman': 'Search announcements',
@@ -363,8 +365,8 @@
     'Urut judul': 'By title',
     'Biasa': 'Regular',
     'Belum ada pengumuman': 'No announcements yet',
-    'Owner bisa menambah pengumuman lewat tombol Manage Announcements di panel admin. Setelah tersimpan ke server, pengumuman langsung muncul di sini.':
-    'The owner can add announcements through the Manage Announcements button in the admin panel. Once it is saved to the server, the announcement shows up here right away.',
+    'Kabar terbaru dari Ghothys Store akan muncul di sini. Cek lagi sebentar lagi.':
+    'The latest news from Ghothys Store will appear here. Check back a little later.',
     '{n} pengumuman': '{n} announcements',
     // Pesan saat penyaringan tidak menemukan apa pun
     'Tidak ada pengumuman yang cocok': 'No matching announcements',
@@ -380,8 +382,8 @@
     'Terdekat': 'Nearest',
     'Paling awal': 'Earliest first',
     'Belum ada acara': 'No events yet',
-    'Owner bisa menambah acara lewat tombol Manage Events di panel admin. Acara yang tanggalnya belum lewat ikut dihitung mundur di atas.':
-    'The owner can add events through the Manage Events button in the admin panel. Events whose date has not passed are counted down above.',
+    'Acara dan promo terbaru akan diumumkan lebih dulu di sini.':
+    'The latest events and promos will be announced here first.',
     '{n} acara': '{n} events',
     // Teks di dalam kartu
     'Resmi': 'Official',
@@ -401,8 +403,8 @@
     'Klik untuk baca penuh': 'Click to read in full',
     'Klik untuk ciutkan': 'Click to collapse',
     'Belum ada banner': 'No banners yet',
-    'Owner bisa menambah banner lewat tombol Manage Banners di Owner Panel.':
-    'The owner can add banners through the Manage Banners button in the Owner Panel.',
+    'Banner resmi dari Ghothys Store akan tampil di sini begitu diterbitkan.':
+    'Official banners from Ghothys Store will show up here as soon as they are published.',
     // Panel admin
     'Jumlah akun di browser ini': 'Accounts registered in this browser',
     'Konten Terpublikasi': 'Published Content',
@@ -421,8 +423,6 @@
     'Urutkan acara': 'Sort events',
     // Banner
     'Banner': 'Banners',
-    'Owner bisa menambah banner lewat tombol Manage Banners di panel admin. Banner berganti sendiri setiap beberapa detik.':
-    'The owner can add banners through the Manage Banners button in the admin panel. Banners change on their own every few seconds.',
     },
   };
 

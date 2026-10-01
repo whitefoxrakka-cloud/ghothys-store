@@ -335,7 +335,10 @@
     /* Titik penanda tidak boleh tertinggal dari banner yang sudah
        diambil owner. */
     var penanda = document.getElementById('pb-banner-indikator');
-    if (penanda && !ada) penanda.innerHTML = '';
+    if (penanda && !ada) {
+      penanda.innerHTML = '';
+      penanda.style.display = 'none';
+    }
 
     if (ada) window.initSlider(jalur);
   }
@@ -375,8 +378,14 @@
       if (elemen) elemen.textContent = String(butir.nilai);
     });
 
+    var total = angka.pengumuman + angka.acara + angka.banner;
     var jumlah = document.getElementById('komunitas-angka-total');
-    if (jumlah) jumlah.textContent = String(angka.pengumuman + angka.acara + angka.banner);
+    if (jumlah) jumlah.textContent = String(total);
+
+    /* Pengingat di hero hanya muncul saat belum ada apa pun.
+       Kalau sudah ada isinya, hero cukup mengandalkan angkanya. */
+    var pengingat = document.getElementById('komunitas-hero-hint');
+    if (pengingat) pengingat.hidden = total > 0;
 
     /* Lencana jumlah di judul blok. */
     var lencanaAn = document.getElementById('komunitas-jumlah-pengumuman');
