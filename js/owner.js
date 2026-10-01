@@ -12,10 +12,87 @@
     return JSON.parse(localStorage.getItem(window.STORAGE_KEYS.OWNER_PANEL) || '{}');
   };
 
+  /* ------------------------------------------------------------
+     TARIK ISI KONTEN DARI SERVER
+     ------------------------------------------------------------
+     Dulu Owner Panel hanya bisa mendorong isi ke server, tidak
+     pernah menarik. Kalau data lokal hilang - browser dibersihkan,
+     ganti perangkat, atau pengumuman terhapus di panel - panel
+     tampil kosong sementara server masih menyimpan isinya.
+
+     Keadaan itu berbahaya, bukan cuma cosmetic. Seluruh konten owner
+     disimpan sebagai satu baris di Airtable dan tiap simpanan
+     menimpanya utuh. Jadi begitu owner menambah satu pengumuman di
+     panel yang tampil kosong, payload-nya berisi satu item, lolos
+     dari pengaman payload kosong, dan semua isi lain yang ada di
+     server terhapus tanpa pesan.
+
+     Fungsi di bawah menutup celah itu: kalau data lokal kosong dan
+     server masih punya isi, isi server itulah yang dipakai sebagai
+     isi lokal. Data lokal yang sudah ada tidak pernah ditimpa, jadi
+     ini bukan penyinkronan dua arah yang bisa menimpa pekerjaan
+     owner. */
+  function relayAlamat(){
+    const cfg = window.GHOTHYS_NOTIFY_CONFIG || {};
+    const url = String(cfg.relayUrl || '').replace(/\/+$/, '');
+    return /^https:\/\//.test(url) ? url : '';
+  }
+
+  function isiLokalKosong(){
+    const data = window.getOwnerData() || {};
+    return ((data.announcements || []).length === 0)
+        && ((data.events || []).length === 0)
+        && ((data.banners || []).length === 0);
+  }
+
+  window.sinkronkanKontenOwner = function(){
+    const alamat = relayAlamat();
+    if(!alamat) return Promise.resolve(null);
+    /* Sudah ada isi lokal: tidak ada yang perlu diambil, dan isi
+       owner tidak boleh ditimpa. */
+    if(!isiLokalKosong()) return Promise.resolve(null);
+
+    return fetch(alamat + '/content', { headers: { 'Accept': 'application/json' } })
+      .then(function(res){ return res.ok ? res.json() : null; })
+      .then(function(body){
+        const isi = (body && body.ok !== false) ? body.content : null;
+        if(!isi) return null;
+
+        const ada = ['announcements', 'events', 'banners'].some(function(k){
+          return Array.isArray(isi[k]) && isi[k].length > 0;
+        });
+        if(!ada) return null;
+
+        /* Bentuk datanya sama persis dengan bentuk yang dipakai
+           panel owner, jadi apa adanya yang dipakai./posts,
+           stats, dan bidang lain milik lokal tetap utuh. */
+        const data = window.getOwnerData() || {};
+        data.announcements = Array.isArray(isi.announcements) ? isi.announcements : [];
+        data.events = Array.isArray(isi.events) ? isi.events : [];
+        data.banners = Array.isArray(isi.banners) ? isi.banners : [];
+        if(isi.pinnedAnnouncement !== undefined) data.pinnedAnnouncement = isi.pinnedAnnouncement || null;
+        if(isi.settings) data.settings = isi.settings;
+
+        localStorage.setItem(window.STORAGE_KEYS.OWNER_PANEL, JSON.stringify(data));
+        return data;
+      })
+      .catch(function(){ return null; });
+  };
+
   window.openOwnerPanel = function(){
     if(!requireLoggedIn()) return;
     const modal = document.getElementById('owner-panel-modal');
     if(modal){ modal.style.display='block'; document.body.style.overflow='hidden'; }
+
+    /* Panel digambar lagi setelah pengambilan isi selesai, supaya
+       owner tidak sempat melihat panel kosong lalu menekan simpan.
+       Kalau isinya sudah ada, tidak ada pengambilan sama sekali. */
+    if(isiLokalKosong() && typeof window.sinkronkanKontenOwner === 'function'){
+      window.sinkronkanKontenOwner().then(function(){
+        if(typeof window.renderOwnerDashboard === 'function') window.renderOwnerDashboard();
+        if(typeof window.renderAnnouncements === 'function') window.renderAnnouncements();
+      });
+    }
     if(typeof window.renderOwnerDashboard === 'function') window.renderOwnerDashboard();
   };
 
