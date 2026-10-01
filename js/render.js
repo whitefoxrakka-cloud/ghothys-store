@@ -60,23 +60,15 @@
 
   window.renderGames = function () { renderKatalog(); };
 
-  window.performSearch = function () {
-    var el = document.getElementById('search-input');
-    if (el) {
-      state.q = el.value;
-      var k = document.getElementById('search-katalog');
-      if (k) k.value = el.value;
-    }
-    renderKatalog();
-  };
-
+  /* Kotak search di navigasi atas sudah dihapus. Yang tersisa
+     hanya satu kotak search di bawah judul Game Populer, jadi
+     pencarian tidak perlu disalin dua tempat. */
   window.setupSearchFunction = function () {
-    ['search-input', 'search-katalog'].forEach(function (id) {
-      var el = document.getElementById(id);
-      if (!el) return;
+    var el = document.getElementById('search-katalog');
+    if (el) {
       el.addEventListener('input', function () { state.q = el.value; renderKatalog(); });
       el.addEventListener('keypress', function (e) { if (e.key === 'Enter') e.preventDefault(); });
-    });
+    }
     var chips = document.getElementById('filter-chips');
     if (chips) {
       chips.addEventListener('click', function (e) {
