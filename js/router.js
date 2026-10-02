@@ -11,7 +11,6 @@ window.navigateTo = function(pageId,event){
   document.querySelectorAll('.nav-link').forEach(l=>{l.classList.toggle('active',l.dataset.page===pageId);});
   document.getElementById('site-footer').style.display=(pageId==='home-page')?'block':'none';
   if(pageId==='transactions-page'){if(typeof window.renderRiwayat==='function')window.renderRiwayat();else window.renderTransactions();}
-  if(pageId==='profile-page')window.updateProfileStats();
-  if(pageId==='community-page')lucide.createIcons();
+  if(pageId==='profile-page'){window.updateProfileStats();if(window.Referral&&typeof window.Referral.pasangPanel==='function')window.Referral.pasangPanel();}
   window.scrollTo({top:0,behavior:'smooth'});
 };

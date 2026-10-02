@@ -13,9 +13,9 @@
      tanpa owner harus menyimpan ulang.
    - Tidak ada token yang disimpan di localStorage/sessionStorage,
      dan tidak ada password yang disimpan di mana pun.
-   - Saat belum login admin, tombol simpan di panel (Announcement/
-     Event/Banner) diblokir dengan pesan jelas, supaya owner tidak
-     kira-kira konten sudah masuk server.
+   - Saat belum login admin, tombol simpan di panel (Banner Utama dan
+     Game Populer) diblokir dengan pesan jelas, supaya owner tidak
+     kira-kira perubahan sudah masuk server.
    ============================================================ */
 
 (function(){
@@ -164,19 +164,10 @@
         var t = ev.target;
         if(!(t instanceof HTMLElement)) return;
 
-        /* Tombol simpan pengumuman dan acara. */
-        var formEl = t.closest('#owner-announcement-form, #owner-event-form');
-        if(formEl && (t.tagName === 'BUTTON' || t.tagName === 'INPUT') && t.type === 'submit'){
-          ev.preventDefault();
-          ev.stopPropagation();
-          mintaLogin();
-          return;
-        }
-
-        /* Tombol Choose Image pada Manage Banners. Tombol ini
-           type="button", jadi tidak tertangkap dua aturan di atas. */
-        var tombolBanner = t.closest('#owner-banner-upload-btn');
-        if(tombolBanner){
+        /* Semua tombol yang menulis ke server, baik simpan banner
+           maupun simpan paket game. */
+        var simpan = t.closest('#owner-banner-utama-simpan, .owner-game-simpan');
+        if(simpan){
           ev.preventDefault();
           ev.stopPropagation();
           mintaLogin();

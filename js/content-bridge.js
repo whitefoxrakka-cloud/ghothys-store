@@ -1,29 +1,34 @@
 /* ============================================================
-   GHOTHYS STORE - CONTENT BRIDGE (fitur #2 - Owner -> Publik)
+   GHOTHYS STORE - CONTENT BRIDGE (Owner -> Publik)
    ------------------------------------------------------------
-   Menghubungkan konten owner (pengumuman/event/banner/pinned)
-   yang disimpan owner di panel Owner dengan tabel Airtable
-   "Content" melalui relay Cloudflare Worker.
+   Owner Panel tidak lagi mengelola pengumuman, acara, atau
+   banner komunitas. Yang tersisa dua hal yang benar-benar
+   dipakai pengunjung: gambar banner utama beranda, dan daftar
+   game yang tampil beserta paket dan harganya.
 
    ALUR:
-   - Owner menyimpan data (js/owner.js -> saveOwnerData):
+   - Owner menyimpan (js/owner.js -> saveOwnerData):
         window.syncOwnerContent(data) dipanggil -> POST {relayUrl}/content
         dengan credentials:'include'. Login cukup SEKALI di panel
-        /admin/: Worker membalas Set-Cookie HttpOnly (ghothys_admin,
+        Owner: Worker membalas Set-Cookie HttpOnly (ghothys_admin,
         8 jam) di domain Worker sendiri, lalu browser mengirimkannya
-        otomatis untuk semua tab. Tidak ada token di file publik dan
-        halaman toko tidak perlu menyimpan apa pun.
-        Non-blocking / fire-and-forget; gagal TIDAK mengganggu panel.
+        otomatis untuk semua tab. Tidak ada token di file publik.
+        Non-blocking; gagal TIDAK mengganggu panel.
    - Pengunjung membuka toko:
-       bridge ini membaca {relayUrl}/content (GET, publik, tanpa token).
-       Kalau ada konten -> render pengumuman/event/banner dinamis ke
-       grid publik (an-grid / ev-grid / banner area).
-       Kalau relay belum aktif / kosong -> biarkan grid statis yang
-       sudah ada (fallback aman).
+        bridge ini membaca {relayUrl}/content (GET, publik, tanpa
+        token) lalu memasang gambarnya ke tiga slide banner beranda
+        dan menimpa daftar game sebelum katalog digambar.
+        Kalau relay mati atau kosong -> berkas bawaan tetap dipakai.
+
+   CATATAN KESELAMATAN:
+        Harga paket di sini sama seperti sebelumnya, yaitu dikirim
+        dari browser dan tidak dibandingkan worker dengan katalog
+        server. Panel owner memberi peringatan soal ini, tapi
+        pengverifikasinya belum ada di sisi server.
 
    KONFIGURASI:
-   Baca dari js/notify-config.js -> window.GHOTHYS_NOTIFY_CONFIG
-   (hanya relayUrl). Tidak ada secret di file publik anymore.
+   window.GHOTHYS_NOTIFY_CONFIG (hanya relayUrl) dari
+   js/notify-config.js. Tidak ada secret di file publik.
    ============================================================ */
 
 (function(){
@@ -31,17 +36,9 @@
   var relayUrl = CONFIG.relayUrl || '';
   var lastPushWarned = false;
 
-  function escapeHtml(s){
-    if(!s) return '';
-    return String(s).replace(/[&<>"']/g, function(c){
-      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
-    });
-  }
-
-  function rupiah(v){
-    var n = parseInt(v, 10);
-    return (isFinite(n) && n>0) ? ('Rp ' + n.toLocaleString('id-ID')) : '-';
-  }
+  /* Jumlah slide banner beranda. Tetap tiga, sama seperti bawaan,
+     supaya tombol dan titik slider tidak perlu berubah. */
+  var JUMLAH_SLIDE = 3;
 
   /* ------------------------------------------------------------
      SISI OWNER -> Relay POST /content
@@ -49,17 +46,11 @@
   window.syncOwnerContent = function(data){
     if(!relayUrl || !/^https:\/\//.test(relayUrl)) return { ok: true, skipped: true };
 
-    /* Tidak ada token di file publik, dan halaman toko tidak perlu
-       menyimpan apa pun. Login cukup sekali di panel /admin/: Worker
-       memberi cookie HttpOnly di domainnya sendiri, lalu browser
-       mengirimkannya otomatis untuk semua tab. */
     var payload = {
-      announcements: (data && data.announcements) || [],
-      events: (data && data.events) || [],
-      banners: (data && data.banners) || [],
-      pinnedAnnouncement: (data && data.pinnedAnnouncement) || null,
-      settings: (data && data.settings) || {}
+      bannerUtama: Array.isArray(data && data.bannerUtama) ? data.bannerUtama : [],
+      gamePopuler: (data && data.gamePopuler) ? data.gamePopuler : { tampil: [], paket: {} }
     };
+
     var url = relayUrl.replace(/\/+$/,'') + '/content';
     fetch(url, {
       method: 'POST',
@@ -81,7 +72,7 @@
       if(r.ok){
         lastPushWarned = false;
         if(typeof window.showToast === 'function'){
-          window.showToast('Konten tersimpan', 'Perubahan sudah terkirim ke server dan tampil untuk pengunjung.');
+          window.showToast('Tersimpan di server', 'Perubahan sudah terkirim dan tampil untuk pengunjung.');
         }
         return;
       }
@@ -95,9 +86,9 @@
         lastPushWarned = true;
         console.warn('[content-bridge] Relay /content POST gagal', r.status, r.json);
         if(typeof window.showErrorToast === 'function'){
-          window.showErrorToast('Konten belum ke server', perluLogin
-            ? 'Login dulu di panel /admin/ (sekali saja, berlaku di semua tab), lalu Simpan lagi.'
-            : 'Konten hanya ada di browser ini. Coba lagi beberapa saat lagi.');
+          window.showErrorToast('Belum ke server', perluLogin
+            ? 'Login dulu di kotak Sinkronisasi Konten, lalu Simpan lagi.'
+            : 'Perubahan hanya ada di browser ini. Coba lagi beberapa saat lagi.');
         }
       }
     }).catch(function(e){
@@ -107,221 +98,111 @@
         lastPushWarned = true;
         console.warn('[content-bridge] Relay /content POST error', e && e.message);
         if(typeof window.showErrorToast === 'function'){
-          window.showErrorToast('Gagal kirim ke server', 'Konten hanya ada di browser ini. Periksa koneksi lalu coba lagi.');
+          window.showErrorToast('Gagal kirim ke server', 'Perubahan hanya ada di browser ini. Periksa koneksi lalu coba lagi.');
         }
       }
     });
     return { ok: true, sent: true };
   };
 
-  /* Login sekali di panel /admin/ (atau lewat form di panel owner) lalu
-     otomatis kirim ulang konten yang tadi gagal. */
+  /* Login sekali di panel Owner, lalu otomatis kirim ulang
+     perubahan yang tadi gagal. */
   window.retryOwnerContentSync = function(){
-    if(typeof window.getOwnerData === 'function'){
-      window.syncOwnerContent(window.getOwnerData());
-    } else {
+    if(typeof window.getOwnerData !== 'function'){
       window.__ghothysSyncState = { status: 'gagal', message: 'data owner tidak terbaca', at: Date.now() };
-    }
-  };
-
-
-/* ------------------------------------------------------------
-     KARTU PUBLIK
-     ------------------------------------------------------------
-     Bagian ini dulu menulis ke wadah yang sudah tidak ada:
-     #an-announcement-grid, #ev-event-grid, dan #banner-viewer.
-     Sekarang wadahnya dibuat ulang di halaman Komunitas.
-
-     Dua perbaikan isi:
-     - Setiap kartu kini membawa data tanggal dan status di
-       atributnya, supaya penyaringan dan hitung mundur punya
-       sumber yang jujur.
-     - Status acara dihitung dari tanggal, bukan dikarang.
-  */
-
-  /* Owner Panel tidak punya kolom kategori, jadi satu-satunya
-     pembeda yang jujur adalah "disematkan" dan "biasa". */
-  function kategoriPengumuman(ann){
-    if (ann.category) return String(ann.category).toLowerCase();
-    return ann.pinned ? 'pinned' : 'info';
-  }
-
-  /* Owner Panel hanya punya tanggal. Status dihitung dari tanggal:
-     waktu yang sudah lewat berarti selesai. Kalau tanggalnya tidak
-     terbaca, dianggap mendatang karena itu keadaan bawaan. */
-  function statusAcara(ev){
-    if (ev.status) return String(ev.status).toLowerCase();
-    const waktu = Date.parse(ev.date || ev.tanggal || '');
-    if (!isFinite(waktu)) return 'upcoming';
-    return waktu < Date.now() ? 'finished' : 'upcoming';
-  }
-
-  function labelStatus(status){
-    if (status === 'live') return 'Berlangsung';
-    if (status === 'finished') return 'Selesai';
-    if (status === 'cancelled') return 'Dibatalkan';
-    return 'Mendatang';
-  }
-
-  function tanggalRingkas(mentah){
-    const waktu = Date.parse(mentah || '');
-    if (!isFinite(waktu)) return '-';
-    return new Date(waktu).toLocaleDateString('id-ID', {
-      day: 'numeric', month: 'short', year: 'numeric'
-    });
-  }
-
-  /* Gambar sampul, atau kotak gradien bila owner tidak mengunggah. */
-  function sampul(src, kelasGradien){
-    if (src) {
-      return '<img src="' + escapeHtml(src) + '" alt="" loading="lazy" decoding="async">';
-    }
-    return '<div class="' + kelasGradien + '"></div>';
-  }
-
-  function buildAnnCard(ann, idx){
-    const disematkan = !!ann.pinned;
-    const kategori = kategoriPengumuman(ann);
-    const kelas = disematkan ? 'an-card pinned' : 'an-card';
-    const waktu = ann.createdAt || ann.date || '';
-
-    const lencana = disematkan
-      ? '<div class="an-cc-badges"><span class="an-badge pinned">Disematkan</span><span class="an-badge official">Resmi</span></div>'
-      : '<div class="an-cc-badges"><span class="an-badge info">Info</span></div>';
-
-    return '' +
-      '<div class="' + kelas + '" data-index="' + idx + '"' +
-        ' data-title="' + escapeHtml(ann.title || '') + '"' +
-        ' data-category="' + escapeHtml(kategori) + '"' +
-        ' data-created="' + escapeHtml(waktu) + '">' +
-        '<div class="an-card-cover">' +
-          sampul(ann.imageUrl, 'an-cc-grad') +
-          '<div class="an-cc-overlay"></div>' +
-          lencana +
-          '<button type="button" class="an-cc-bookmark" aria-pressed="false"' +
-            ' aria-label="Tandai pengumuman ini untuk dibaca nanti">&#128278;</button>' +
-        '</div>' +
-        '<div class="an-card-body">' +
-          '<div class="an-card-cat">' + (disematkan ? 'Disematkan' : 'Pengumuman') + '</div>' +
-          '<div class="an-card-title">' + escapeHtml(ann.title || '') + '</div>' +
-          '<div class="an-card-desc">' + escapeHtml(ann.content || '') + '</div>' +
-          '<div class="an-card-footer">' +
-            '<span class="an-cf-author"><span class="an-cf-avatar">&#9813;</span> Owner</span>' +
-            '<span class="an-cf-date">' + tanggalRingkas(waktu) + '</span>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
-  }
-
-  function buildEventCard(ev, idx){
-    const status = statusAcara(ev);
-    const tanggal = ev.date || ev.tanggal || '';
-    const waktu = ev.createdAt || tanggal;
-
-    return '' +
-      '<div class="ev-card" data-index="' + idx + '"' +
-        ' data-title="' + escapeHtml(ev.title || '') + '"' +
-        ' data-status="' + escapeHtml(status) + '"' +
-        ' data-tanggal="' + escapeHtml(tanggal) + '"' +
-        ' data-created="' + escapeHtml(waktu) + '">' +
-        '<div class="ev-card-cover">' +
-          sampul(ev.imageUrl, 'ev-cc-grad') +
-          '<div class="ev-cc-overlay"></div>' +
-          '<div class="ev-cc-badges">' +
-            '<span class="ev-badge ' + escapeHtml(status) + '">' + escapeHtml(labelStatus(status)) + '</span>' +
-          '</div>' +
-          '<button type="button" class="ev-cc-bookmark" aria-pressed="false"' +
-            ' aria-label="Tandai acara ini untuk dibaca nanti">&#128278;</button>' +
-        '</div>' +
-        '<div class="ev-card-body">' +
-          '<div class="ev-card-cat">Acara</div>' +
-          '<div class="ev-card-title">' + escapeHtml(ev.title || '') + '</div>' +
-          '<div class="ev-card-desc">' + escapeHtml(ev.description || '') + '</div>' +
-          '<div class="ev-card-meta">' +
-            '<span class="ev-cm-item">' + tanggalRingkas(tanggal) + '</span>' +
-            (ev.location ? '<span class="ev-cm-item">' + escapeHtml(ev.location) + '</span>' : '') +
-          '</div>' +
-        '</div>' +
-      '</div>';
-  }
-
-  function buildBanner(b, idx){
-    return '<div class="pb-banner-item" data-index="' + idx + '">' +
-        '<div class="pb-banner-cover">' + sampul(b.imageUrl, 'an-cc-grad') + '</div>' +
-        '<div class="pb-banner-keterangan">' +
-          (b.title ? '<div class="pb-banner-title">' + escapeHtml(b.title) + '</div>' : '<div></div>') +
-          (b.link ? '<a class="pb-banner-link" target="_blank" rel="noopener noreferrer" href="' +
-            escapeHtml(b.link) + '">Lihat detail</a>' : '') +
-        '</div>' +
-      '</div>';
-  }
-
-  /* Simpan isi kartu cadangan dari markup statis supaya masih ada
-     kalau relay mati. */
-  function simpanStatis(grid){
-    if (!grid.getAttribute('data-static-cards')){
-      grid.setAttribute('data-static-cards', grid.innerHTML);
-    }
-  }
-
-  /* Kalau Owner Panel menghapus semua isinya, daftar harus ikut
-     kosong dan panel "belum ada konten" yang muncul. Tapi kalau
-     bidangnya tidak ada sama sekali, biarkan kartu cadangan. */
-  function isiAtauKosong(konten, nama){
-    if (!konten || !Array.isArray(konten[nama])) return null;
-    return konten[nama];
-  }
-
-  function pasangPinned(judul){
-    if (typeof window.pasangPinnedBar === 'function'){
-      window.pasangPinnedBar(judul || '');
       return;
     }
-    /* Cadangan kalau community.js belum termuat. Baris dan
-       judulnya tetap diisi supaya tampilan tidak setengah jadi. */
-    const bar = document.getElementById('an-pinned-bar');
-    if (bar){
-      const isi = (judul || '').trim();
-      bar.hidden = isi === '';
-      const target = document.getElementById('an-pinned-title');
-      if (target && isi) target.textContent = isi;
+    window.syncOwnerContent(window.getOwnerData());
+  };
+
+  /* ------------------------------------------------------------
+     SISI PENGUNJUNG -> pasang ke halaman
+     ------------------------------------------------------------ */
+
+  /* Banner beranda: tiga <img class="slider-slide"> diset berurutan
+     sesuai slot owner. Slot kosong berarti pakai gambar bawaan,
+     jadi panel tidak pernah bisa membuat beranda kosong. */
+  function pasangBannerUtama(list){
+    if(!Array.isArray(list)) return 0;
+    var terpasang = 0;
+    for(var i = 0; i < JUMLAH_SLIDE; i++){
+      var img = document.querySelector('.slider-slide[data-template-id="hero-banner-' + (i+1) + '"]');
+      if(!img) continue;
+      var slot = list[i] || {};
+      var bawaan = img.getAttribute('data-src-bawaan') || img.getAttribute('src') || '';
+      var alamat = String(slot.url || '').trim();
+      if(!alamat){
+        /* Kembalikan ke bawaan kalau owner mengosongkan slot. */
+        img.setAttribute('src', bawaan);
+        img.setAttribute('alt', img.getAttribute('data-alt-bawaan') || '');
+      } else {
+        img.setAttribute('src', alamat);
+        if(slot.alt) img.setAttribute('alt', String(slot.alt));
+        terpasang++;
+      }
     }
+    return terpasang;
+  }
+
+  /* Daftar game. Owner menentukan game mana yang tampil dan paket apa
+     yang dipakai di dalamnya. Bentuk data dari owner:
+       semuaTampil : belum ada berarti semua game tampil (bawaan).
+                     false berarti hanya isi "tampil" yang dipakai.
+       tampil      : daftar kunci game yang tampil, urut = urutan
+                     di beranda.
+       paket       : kunci game -> daftar paket hasil editan owner.
+     Game yang tidak disebut owner tetap ikut tampil dengan paket
+     bawaan, jadi satu baris yang belum diisi tidak membuat katalog
+     kosong. */
+  function pasangGamePopuler(konfigurasi){
+    if(!konfigurasi || typeof konfigurasi !== 'object') return 0;
+    var asal = Array.isArray(window.gamesData) ? window.gamesData : [];
+    if(!asal.length) return 0;
+
+    var semuaTampil = konfigurasi.semuaTampil !== false;
+    var tampil = Array.isArray(konfigurasi.tampil) ? konfigurasi.tampil : [];
+    var paket = (konfigurasi.paket && typeof konfigurasi.paket === 'object') ? konfigurasi.paket : {};
+
+    var hasil = asal.slice();
+
+    if(!semuaTampil){
+      var urutan = {};
+      tampil.forEach(function(kunci, nomor){ urutan[String(kunci)] = nomor; });
+      hasil = asal.filter(function(g){
+        return Object.prototype.hasOwnProperty.call(urutan, String(g.searchKey));
+      });
+      /* Urutan di panel yang menentukan urutan di beranda. */
+      hasil.sort(function(a, b){
+        return urutan[String(a.searchKey)] - urutan[String(b.searchKey)];
+      });
+    }
+
+    /* Paket owner menimpa paket bawaan game itu. Game yang tidak
+       punya paket owner tetap memakai bawaan. */
+    hasil = hasil.map(function(g){
+      var milikOwner = paket[String(g.searchKey)];
+      if(!Array.isArray(milikOwner) || !milikOwner.length) return g;
+      var salinan = {};
+      for(var k in g){ if(Object.prototype.hasOwnProperty.call(g, k)) salinan[k] = g[k]; }
+      salinan.packages = milikOwner;
+      return salinan;
+    });
+
+    window.gamesData = hasil;
+    if(typeof window.renderGames === 'function') window.renderGames();
+    return hasil.length;
   }
 
   function renderContent(content){
-    if (!content) return;
+    if(!content || typeof content !== 'object') return;
 
-    const anGrid = document.getElementById('an-announcement-grid');
-    const anIsi = isiAtauKosong(content, 'announcements');
-    if (anGrid && anIsi){
-      simpanStatis(anGrid);
-      anGrid.innerHTML = anIsi.map(buildAnnCard).join('');
-    }
+    var jumlahBanner = pasangBannerUtama(content.bannerUtama);
+    var jumlahGame = pasangGamePopuler(content.gamePopuler);
 
-    const evGrid = document.getElementById('ev-event-grid');
-    const evIsi = isiAtauKosong(content, 'events');
-    if (evGrid && evIsi){
-      simpanStatis(evGrid);
-      evGrid.innerHTML = evIsi.map(buildEventCard).join('');
-    }
-
-    const bannerArea = document.getElementById('banner-viewer');
-    const bannerIsi = isiAtauKosong(content, 'banners');
-    if (bannerArea && bannerIsi){
-      simpanStatis(bannerArea);
-      bannerArea.innerHTML = bannerIsi.map(buildBanner).join('');
-    }
-
-    pasangPinned(content.pinnedAnnouncement);
-
-    /* Kabari halaman Komunitas supaya penyaringan, status kosong,
-       titik banner, dan angka ringkasan ikut dihitung ulang. */
+    /* Beri tahu halaman supaya katalog digambar ulang kalau
+       gamesData sempat terisi lebih dulu. */
     document.dispatchEvent(new CustomEvent('ghothys-konten-masuk', {
-      detail: {
-        pengumuman: anIsi ? anIsi.length : 0,
-        acara: evIsi ? evIsi.length : 0,
-        banner: bannerIsi ? bannerIsi.length : 0
-      }
+      detail: { banner: jumlahBanner, game: jumlahGame }
     }));
   }
 
@@ -339,7 +220,7 @@
         }
       })
       .catch(function(e){
-        /* relay belum aktif / mati -> biarkan kartu statis */
+        /* relay mati -> berkas bawaan tetap dipakai */
       });
   }
 

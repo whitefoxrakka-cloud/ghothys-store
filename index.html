@@ -36,9 +36,6 @@
  <link rel="stylesheet" href="css/animations.css?v=20260925d">
  <link rel="stylesheet" href="css/navigation.css?v=20260925d">
  <link rel="stylesheet" href="css/home.css?v=20260929a">
-    <link rel="stylesheet" href="css/event.css?v=20261001c">
-    <link rel="stylesheet" href="css/announcement.css?v=20261001c">
-    <link rel="stylesheet" href="css/community.css?v=20261001c">
     <link rel="stylesheet" href="css/faq.css?v=20260925d">
    <link rel="stylesheet" href="css/profile.css?v=20260925d">
  <link rel="stylesheet" href="css/transaction.css?v=20260925d">
@@ -64,7 +61,6 @@
     </div>
       <div class="hidden md:flex space-x-6">
          <a href="#" class="nav-link font-medium active" style="color:var(--text-primary)" data-page="home-page">Beranda</a>
-         <a href="#" class="nav-link font-medium" style="color:var(--text-primary)" data-page="community-page">Komunitas</a>
          <a href="#" class="nav-link font-medium" style="color:var(--text-primary)" data-page="transactions-page">Transaksi <span id="transaction-count-badge" class="ml-1 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full" style="display:none;">0</span></a>
          <a href="#" class="nav-link font-medium" style="color:var(--text-primary)" data-page="profile-page">Profil</a>
          <a href="#" id="owner-panel-btn" class="owner-panel-open nav-link font-medium text-yellow-400" style="color:var(--text-primary);display:none;" data-action="open-owner-panel">⚙ OWNER PANEL</a>
@@ -85,7 +81,7 @@
   <div id="home-page" class="page-content active">
   <section class="w-full">
    <div class="relative w-full h-[700px] overflow-hidden bg-gray-900">
-   <div class="relative w-full h-full"><img data-template-id="hero-banner-1" class="canva-image slider-slide absolute inset-0 w-full h-full object-cover opacity-100" loading="lazy" src="images/banner top up.png" alt="Game Top Up Banner dengan karakter mascot"> <img data-template-id="hero-banner-2" class="canva-image slider-slide absolute inset-0 w-full h-full object-cover opacity-0" loading="lazy" src="images/voucher banner.png" alt="Roblox Games Banner dengan karakter mascot"> <img data-template-id="hero-banner-3" class="canva-image slider-slide absolute inset-0 w-full h-full object-cover opacity-0" loading="lazy" src="images/roblox banner.png" alt="Voucher Murah Banner dengan karakter mascot">
+   <div class="relative w-full h-full"><img data-template-id="hero-banner-1" class="canva-image slider-slide absolute inset-0 w-full h-full object-cover opacity-100" loading="lazy" src="images/banner top up.png" alt="Game Top Up Banner dengan karakter mascot" data-src-bawaan="images/banner top up.png" data-alt-bawaan="Game Top Up Banner dengan karakter mascot"> <img data-template-id="hero-banner-2" class="canva-image slider-slide absolute inset-0 w-full h-full object-cover opacity-0" loading="lazy" src="images/voucher banner.png" alt="Roblox Games Banner dengan karakter mascot" data-src-bawaan="images/voucher banner.png" data-alt-bawaan="Roblox Games Banner dengan karakter mascot"> <img data-template-id="hero-banner-3" class="canva-image slider-slide absolute inset-0 w-full h-full object-cover opacity-0" loading="lazy" src="images/roblox banner.png" alt="Voucher Murah Banner dengan karakter mascot" data-src-bawaan="images/roblox banner.png" data-alt-bawaan="Voucher Murah Banner dengan karakter mascot">
    </div><button class="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-black bg-opacity-40 hover:bg-opacity-60 text-white p-3 rounded-full transition" data-action="slider-prev">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <polyline points="15 18 9 12 15 6"></polyline>
@@ -164,146 +160,6 @@
    </div>
    </div>
   </section>
-<!-- Halaman Komunitas -->
-<!-- Dibangun ulang 2026-09-30. Section Community yang lama hilang,
-     padahal announcement.css, event.css, content-bridge.js, dan
-     hook router sudah masih ada dan menunggu wadah ini. -->
-<div id="community-page" class="page-content">
-<section class="komunitas">
-<!-- HERO -->
-<div class="an-hero">
-  <div class="an-hero-bg">
-    <div class="an-particle"></div>
-    <div class="an-particle"></div>
-    <div class="an-particle"></div>
-    <div class="an-particle"></div>
-    <div class="an-particle"></div>
-    <div class="an-particle"></div>
-  </div>
-  <div class="an-hero-glow"></div>
-  <div class="an-hero-glow"></div>
-  <div class="an-hero-content">
-    <span class="an-hero-badge">Pusat Komunitas</span>
-    <h1 class="an-hero-title">Ghothys Community</h1>
-    <p class="an-hero-sub">Semua kabar resmi Ghothys Store dikumpulkan di satu halaman ini: pengumuman terbaru, acara yang akan datang, dan banner yang sedang tayang.</p>
-    <div class="an-hero-meta">
-      <span class="an-hero-stat"><span class="an-hs-val" id="komunitas-angka-pengumuman">0</span> Pengumuman</span>
-      <span class="an-hero-stat"><span class="an-hs-val" id="komunitas-angka-acara">0</span> Acara</span>
-      <span class="an-hero-stat"><span class="an-hs-val" id="komunitas-angka-banner">0</span> Banner</span>
-      <span class="an-hero-stat"><span class="an-hs-val" id="komunitas-angka-total">0</span> Total Konten</span>
-    </div>
-    <p class="an-hero-hint" id="komunitas-hero-hint" hidden>Belum ada pengumuman atau acara yang dipublikasikan. Kabar terbaru akan muncul di halaman ini.</p>
-  </div>
-</div>
-<div class="an-divider"></div>
-<!-- NAVIGASI CEPAT -->
-<div class="an-quick-nav">
-  <a class="an-quick-link" href="#komunitas-pengumuman" data-ke="komunitas-pengumuman">Pengumuman</a>
-  <a class="an-quick-link" href="#komunitas-acara" data-ke="komunitas-acara">Acara</a>
-  <a class="an-quick-link" href="#komunitas-banner" data-ke="komunitas-banner">Banner</a>
-</div>
-<!-- PENGUMUMAN YANG DISEMATKAN -->
-<div class="an-block">
-  <div class="an-pinned-bar" id="an-pinned-bar" hidden>
-    <i class="an-pin-icon" data-lucide="pin"></i>
-    <div class="an-pin-info">
-      <div class="an-pin-title" id="an-pinned-title">-</div>
-      <div class="an-pin-desc">Disematkan oleh Ghothys Store</div>
-    </div>
-  </div>
-</div>
-<!-- BANNER MILIK OWNER -->
-<div class="an-block" id="komunitas-banner">
-  <div class="an-block-header">
-    <h2 class="an-block-title"><i data-lucide="image"></i> Banner</h2>
-  </div>
-  <div class="pb-banner">
-    <div class="pb-banner-track" id="banner-viewer"></div>
-  </div>
-  <div class="pb-banner-indikator" id="pb-banner-indikator"></div>
-  <div class="komunitas-kosong" id="banner-kosong" style="display:none">
-    <div class="komunitas-kosong-ikon"><i data-lucide="image-off"></i></div>
-    <div class="komunitas-kosong-judul">Belum ada banner</div>
-    <div class="komunitas-kosong-ket">Banner resmi dari Ghothys Store akan tampil di sini begitu diterbitkan.</div>
-  </div>
-</div>
-<!-- PENGUMUMAN -->
-<div class="an-block" id="komunitas-pengumuman">
-  <div class="an-block-header">
-    <h2 class="an-block-title"><i data-lucide="megaphone"></i> Pengumuman</h2>
-    <span class="an-block-link" id="komunitas-jumlah-pengumuman">0 pengumuman</span>
-  </div>
-  <div class="an-filter-bar">
-    <div class="an-filter-search">
-      <i data-lucide="search"></i>
-      <input id="an-search-input" type="search" placeholder="Cari pengumuman" autocomplete="off" />
-    </div>
-    <select id="an-cat-filter" class="an-filter-select" aria-label="Saring pengumuman menurut kategori">
-      <option value="all">Semua kategori</option>
-      <option value="pinned">Disematkan</option>
-      <option value="info">Pengumuman biasa</option>
-    </select>
-    <select id="an-sort-filter" class="an-filter-select" aria-label="Urutkan pengumuman">
-      <option value="terbaru">Terbaru</option>
-      <option value="terlama">Terlama</option>
-      <option value="judul">Urut judul</option>
-    </select>
-    <div class="an-filter-tabs" role="tablist">
-      <button type="button" class="an-filter-tab active" data-filter="all" aria-selected="true">Semua</button>
-      <button type="button" class="an-filter-tab" data-filter="pinned" aria-selected="false">Disematkan</button>
-      <button type="button" class="an-filter-tab" data-filter="info" aria-selected="false">Biasa</button>
-    </div>
-  </div>
-  <div class="an-grid" id="an-announcement-grid"></div>
-  <div class="komunitas-kosong" id="an-announcement-kosong" style="display:none">
-    <div class="komunitas-kosong-ikon"><i data-lucide="megaphone-off"></i></div>
-    <div class="komunitas-kosong-judul">Belum ada pengumuman</div>
-    <div class="komunitas-kosong-judul komunitas-kosong-saring" hidden>Tidak ada pengumuman yang cocok</div>
-    <div class="komunitas-kosong-ket" hidden>Coba kata kunci lain, atau kembalikan saringan ke Semua.</div>
-    <div class="komunitas-kosong-ket">Kabar terbaru dari Ghothys Store akan muncul di sini. Cek lagi sebentar lagi.</div>
-  </div>
-</div>
-<!-- ACARA -->
-<div class="an-block" id="komunitas-acara">
-  <div class="an-block-header">
-    <h2 class="an-block-title"><i data-lucide="calendar-days"></i> Acara</h2>
-    <span class="an-block-link" id="komunitas-jumlah-acara">0 acara</span>
-  </div>
-  <div class="ev-hero-cd" id="komunitas-acara-hitung-mundur" hidden>
-    <div id="ev-hero-countdown" style="display:contents"></div>
-  </div>
-  <div class="ev-filter-bar">
-    <div class="ev-filter-search">
-      <i data-lucide="search"></i>
-      <input id="ev-search-input" type="search" placeholder="Cari acara" autocomplete="off" />
-    </div>
-    <select id="ev-status-filter" class="ev-filter-select" aria-label="Saring acara menurut status">
-      <option value="all">Semua status</option>
-      <option value="upcoming">Mendatang</option>
-      <option value="finished">Selesai</option>
-    </select>
-    <select id="ev-sort-filter" class="ev-filter-select" aria-label="Urutkan acara">
-      <option value="terdekat">Terdekat</option>
-      <option value="terlama">Paling awal</option>
-      <option value="judul">Urut judul</option>
-    </select>
-    <div class="ev-filter-tabs" role="tablist">
-      <button type="button" class="ev-filter-tab active" data-filter="all" aria-selected="true">Semua</button>
-      <button type="button" class="ev-filter-tab" data-filter="upcoming" aria-selected="false">Mendatang</button>
-      <button type="button" class="ev-filter-tab" data-filter="finished" aria-selected="false">Selesai</button>
-    </div>
-  </div>
-  <div class="ev-grid" id="ev-event-grid"></div>
-  <div class="komunitas-kosong" id="ev-event-kosong" style="display:none">
-    <div class="komunitas-kosong-ikon"><i data-lucide="calendar-off"></i></div>
-    <div class="komunitas-kosong-judul">Belum ada acara</div>
-    <div class="komunitas-kosong-judul komunitas-kosong-saring" hidden>Tidak ada acara yang cocok</div>
-    <div class="komunitas-kosong-ket" hidden>Coba kata kunci lain, atau kembalikan saringan ke Semua.</div>
-    <div class="komunitas-kosong-ket">Acara dan promo terbaru akan diumumkan lebih dulu di sini.</div>
-  </div>
-</div>
-</section>
-</div><!-- community-page selesai -->
   </div><!-- Transactions Page -->
   <div id="transactions-page" class="page-content">
   <section class="w-full py-16 min-h-screen" style="background:var(--bg-primary);">
@@ -441,7 +297,6 @@
   
 
 
-  </div>
   </div><!-- Footer -->
   <footer id="site-footer" class="bg-gray-800 text-white w-full py-12">
   <div class="max-w-7xl mx-auto px-4">
@@ -937,10 +792,8 @@
             <div class="flex justify-between items-center mb-6">
                <h2 class="text-2xl font-bold" style="color:var(--text-primary)">Owner Dashboard</h2>
                <div class="flex items-center gap-3">
-                  <button id="owner-open-announcements" data-action="open-owner-announcements" class="px-3 py-1 rounded bg-yellow-400 text-sm">Manage Announcements</button>
-                  <button id="owner-open-events" data-action="open-owner-events" class="px-3 py-1 rounded bg-indigo-500 text-sm">Manage Events</button>
-                  <button id="owner-open-banners" data-action="open-owner-banners" class="px-3 py-1 rounded bg-pink-500 text-sm">Manage Banners</button>
-                  <button type="button" id="owner-buka-komunitas" data-action="buka-komunitas" class="px-3 py-1 rounded bg-emerald-500 text-sm" title="Buka halaman Komunitas">Lihat Halaman Komunitas</button>
+                  <button id="owner-open-banner-utama" data-action="open-owner-banner-utama" class="px-3 py-1 rounded bg-pink-500 text-sm">Atur Banner Utama</button>
+                  <button id="owner-open-game-populer" data-action="open-owner-game-populer" class="px-3 py-1 rounded bg-purple-600 text-sm">Atur Game Populer</button>
                   <button class="owner-close text-3xl" style="color:var(--text-secondary)">×</button>
                </div>
             </div>
@@ -951,39 +804,15 @@
 <div class="text-xs" style="color:var(--text-secondary);">Jumlah akun di browser ini</div>
 </div>
 <div class="rounded-lg p-4" style="background:var(--bg-primary);">
-<div class="text-sm">Konten Terpublikasi</div>
-<div id="owner-total-content" class="text-2xl font-bold">0</div>
-<div class="text-xs" style="color:var(--text-secondary);">Tampil di halaman Komunitas</div>
+<div class="text-sm">Banner Utama</div>
+<div id="owner-total-banner" class="text-2xl font-bold">0</div>
+<div class="text-xs" style="color:var(--text-secondary);">Gambar yang dipasang lewat panel ini</div>
 </div>
 <div class="rounded-lg p-4" style="background:var(--bg-primary);">
-<div class="text-sm">Pengumuman</div>
-<div id="owner-total-announcements" class="text-2xl font-bold">0</div>
+<div class="text-sm">Game Dipilih</div>
+<div id="owner-total-game" class="text-2xl font-bold">0</div>
+<div class="text-xs" style="color:var(--text-secondary);">Dari total game di katalog</div>
 </div>
-<div class="rounded-lg p-4" style="background:var(--bg-primary);">
-<div class="text-sm">Acara</div>
-<div id="owner-total-events" class="text-2xl font-bold">0</div>
-</div>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-<div class="rounded-lg p-4" style="background:var(--bg-primary);">
-<div class="text-sm">Pengumuman Disematkan</div>
-<div id="owner-pinned-announcement" class="text-lg">-</div>
-</div>
-<div class="rounded-lg p-4" id="owner-upcoming-event-kartu" style="background:var(--bg-primary);">
-<div class="text-sm">Acara Mendatang</div>
-<div id="owner-upcoming-event" class="text-lg">-</div>
-</div>
-<div class="rounded-lg p-4" style="background:var(--bg-primary);">
-<div class="text-sm">Pengumuman Terbaru</div>
-<div id="owner-latest-announcement" class="text-lg">-</div>
-</div>
-</div>
-
-            <div class="mt-6 rounded-lg p-4" style="background:var(--bg-primary);">
-               <div class="text-sm">Latest Event</div>
-               <div id="owner-latest-event" class="text-lg">—</div>
-            </div>
-        
               <!-- Sinkronisasi Konten ke Server (butuh login sekali) -->
               <div id="owner-sync-section" class="mt-6">
                  <div class="rounded-lg p-4" style="background:var(--bg-primary);">
@@ -1009,70 +838,56 @@
                  </div>
               </div>
 
-              <!-- Announcement Manager (Phase 2) -->
-              <div id="owner-announcements-section" style="display:none;" class="mt-6">
-               <div class="rounded-lg p-4 mb-4" style="background:var(--bg-primary);">
-                  <h3 class="font-semibold mb-2">Create Announcement</h3>
-                  <form id="owner-announcement-form">
-                     <div class="mb-2">
-                        <input id="announcement-title" placeholder="Title" class="w-full p-2 rounded" required />
-                     </div>
-                     <div class="mb-2">
-                        <textarea id="announcement-content" placeholder="Content" class="w-full p-2 rounded" rows="3" required></textarea>
-                     </div>
-                     <div class="mb-2 flex items-center gap-2">
-                        <label><input type="checkbox" id="announcement-pin" /> Pin announcement</label>
-                        <button type="submit" class="ml-auto px-3 py-1 rounded bg-green-500 text-white">Add</button>
-                     </div>
-                  </form>
-               </div>
-               <div class="rounded-lg p-4" style="background:var(--bg-primary);">
-                  <h3 class="font-semibold mb-2">Announcements</h3>
-                  <div id="owner-announcements-list" class="space-y-3">No announcements yet.</div>
-               </div>
-            </div>
-        
-            <!-- Event Manager (Phase 3) -->
-            <div id="owner-events-section" style="display:none;" class="mt-6">
-               <div class="rounded-lg p-4 mb-4" style="background:var(--bg-primary);">
-                  <h3 class="font-semibold mb-2">Create Event</h3>
-                  <form id="owner-event-form">
-                     <div class="mb-2">
-                        <input id="event-title" placeholder="Event Title" class="w-full p-2 rounded" required />
-                     </div>
+              <!-- Banner Utama: tiga gambar yang tampil bergantian di beranda -->
+              <div id="owner-banner-utama-section" style="display:none;" class="mt-6">
+                 <div class="rounded-lg p-4" style="background:var(--bg-primary);">
+                    <h3 class="font-semibold mb-2">Banner Utama Beranda</h3>
+                    <p class="text-xs mb-3" style="color:var(--text-secondary);">Tiga gambar di bawah ini yang muncul bergantian di bagian atas beranda. Tempel alamat gambar, boleh dari komputer ini (contoh: images/banner top up.png) atau dari internet (contoh: https://...).</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="owner-banner-utama-list">
+                       <div class="rounded p-2" style="background:var(--bg-card);">
+                          <div class="text-xs mb-1">Slide 1</div>
+                          <img id="owner-banner-1-pratinjau" alt="" style="width:100%;height:90px;object-fit:cover;display:block;border-radius:6px;margin-bottom:6px;" />
+                          <input id="owner-banner-1-url" type="text" placeholder="Alamat gambar" class="w-full p-2 rounded mb-1" style="background:var(--bg-card);color:var(--text-primary);font-size:12px;" />
+                          <input id="owner-banner-1-alt" type="text" placeholder="Keterangan gambar" class="w-full p-2 rounded" style="background:var(--bg-card);color:var(--text-primary);font-size:12px;" />
+                       </div>
+                       <div class="rounded p-2" style="background:var(--bg-card);">
+                          <div class="text-xs mb-1">Slide 2</div>
+                          <img id="owner-banner-2-pratinjau" alt="" style="width:100%;height:90px;object-fit:cover;display:block;border-radius:6px;margin-bottom:6px;" />
+                          <input id="owner-banner-2-url" type="text" placeholder="Alamat gambar" class="w-full p-2 rounded mb-1" style="background:var(--bg-card);color:var(--text-primary);font-size:12px;" />
+                          <input id="owner-banner-2-alt" type="text" placeholder="Keterangan gambar" class="w-full p-2 rounded" style="background:var(--bg-card);color:var(--text-primary);font-size:12px;" />
+                       </div>
+                       <div class="rounded p-2" style="background:var(--bg-card);">
+                          <div class="text-xs mb-1">Slide 3</div>
+                          <img id="owner-banner-3-pratinjau" alt="" style="width:100%;height:90px;object-fit:cover;display:block;border-radius:6px;margin-bottom:6px;" />
+                          <input id="owner-banner-3-url" type="text" placeholder="Alamat gambar" class="w-full p-2 rounded mb-1" style="background:var(--bg-card);color:var(--text-primary);font-size:12px;" />
+                          <input id="owner-banner-3-alt" type="text" placeholder="Keterangan gambar" class="w-full p-2 rounded" style="background:var(--bg-card);color:var(--text-primary);font-size:12px;" />
+                       </div>
+                    </div>
+                    <div class="flex items-center gap-2 mt-3">
+                       <button type="button" id="owner-banner-utama-simpan" class="px-4 py-2 rounded text-white font-semibold" style="background:#4f46e5;">Simpan Banner</button>
+                       <button type="button" id="owner-banner-utama-kembalikan" class="px-3 py-2 rounded text-sm" style="background:var(--bg-card);color:var(--text-primary);">Kembalikan ke bawaan</button>
+                    </div>
+                 </div>
+              </div>
 
-                     <div class="mb-2">
-                        <input id="event-date" type="datetime-local" class="w-full p-2 rounded" required />
-                     </div>
-                     <div class="mb-2">
-                        <textarea id="event-description" placeholder="Description" class="w-full p-2 rounded" rows="3"></textarea>
-                     </div>
-                     <div class="mb-2 flex items-center gap-2">
-                        <button type="submit" class="ml-auto px-3 py-1 rounded bg-green-500 text-white">Add Event</button>
-                     </div>
-                  </form>
-               </div>
-               <div class="rounded-lg p-4" style="background:var(--bg-primary);">
-                  <h3 class="font-semibold mb-2">Events</h3>
-                  <div id="owner-events-list" class="space-y-3">No events yet.</div>
-               </div>
-            </div>
-
-                     <!-- Banner / Gallery Manager (Phase 4) -->
-                     <div id="owner-banners-section" style="display:none;" class="mt-6">
-                        <div class="rounded-lg p-4 mb-4" style="background:var(--bg-primary);">
-                           <h3 class="font-semibold mb-2">Upload Banner</h3>
-                           <div class="mb-2 flex items-center gap-2">
-                              <input id="owner-banner-input" type="file" accept="image/*" style="display:none;" />
-                              <button type="button" id="owner-banner-upload-btn" class="px-3 py-1 rounded bg-blue-600 text-white">Choose Image</button>
-                              <span id="owner-banner-upload-hint" class="text-sm text-gray-400">Max 2MB recommended</span>
-                           </div>
-                        </div>
-                        <div class="rounded-lg p-4" style="background:var(--bg-primary);">
-                           <h3 class="font-semibold mb-2">Banners</h3>
-                           <div id="owner-banners-list" class="grid grid-cols-2 md:grid-cols-4 gap-3">No banners yet.</div>
-                        </div>
-                     </div>
+              <!-- Game Populer: owner memilih game dan mengedit paketnya -->
+              <div id="owner-game-populer-section" style="display:none;" class="mt-6">
+                 <div class="rounded-lg p-4 mb-4" style="background:#7c2d12;">
+                    <h3 class="font-semibold mb-1" style="color:#fde68a;">Perhatian: harga di sini langsung dilihat pembeli</h3>
+                    <p class="text-xs" style="color:#fed7aa;">Nominal yang diisi akan muncul di halaman toko dan dipakai saat pembeli membuat pesanan. Periksa lagi angkanya sebelum menyimpan. Untuk membatalkan perubahan pada satu game, tekan Kembalikan di baris game itu.</p>
+                 </div>
+                 <div class="rounded-lg p-4 mb-4" style="background:var(--bg-primary);">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                       <h3 class="font-semibold">Daftar Game</h3>
+                       <div class="flex items-center gap-2">
+                          <button type="button" id="owner-game-semua" class="px-3 py-1 rounded text-sm text-white" style="background:#16a34a;">Tampilkan semua</button>
+                          <button type="button" id="owner-game-tidak" class="px-3 py-1 rounded text-sm text-white" style="background:#b91c1c;">Sembunyikan semua</button>
+                       </div>
+                    </div>
+                    <p class="text-xs mt-1" style="color:var(--text-secondary);">Yang tidak dicentang tidak muncul di katalog. Urutan di daftar ini menentukan urutan tampil di beranda.</p>
+                    <div id="owner-game-list" class="space-y-2 mt-3"></div>
+                 </div>
+              </div>
          </div>
       </div>
    </div><!-- Toasts -->
@@ -1104,18 +919,16 @@
  <script src="js/constants.js?v=20260925d"></script>
  <script src="js/storage.js?v=20260925d"></script>
  <script src="js/utilities.js?v=20260925d"></script>
- <script src="js/bahasa.js?v=20261001c"></script>
+ <script src="js/bahasa.js?v=20261001d"></script>
  <script src="js/slider.js?v=20260925d"></script>
  <script src="js/render.js?v=20261001a"></script>
- <script src="js/router.js?v=20261001c"></script>
+ <script src="js/router.js?v=20261001d"></script>
  <script src="js/navigation.js?v=20260925d"></script>
  <script src="js/animations.js?v=20260925d"></script>
 <script src="js/auth.js?v=20260925d"></script>
 <script src="js/profile.js?v=20260925d"></script>
 <script src="js/transactions.js?v=20260925d"></script>
  <script src="js/riwayat.js?v=20260929a"></script>
-   <script src="js/event.js?v=20261001c"></script>
-   <script src="js/announcement.js?v=20261001c"></script>
    <script src="js/faq.js?v=20260925d"></script>
    <script src="js/modal.js?v=20260925d"></script>
 <script src="js/notify-config.js?v=20260925d"></script>
@@ -1127,11 +940,10 @@
    <script src="js/referral.js?v=20260930b"></script>
    <script src="js/export.js?v=20260930a"></script>
    <script src="js/topup.js?v=20260929a"></script>
-   <script src="js/owner.js?v=20261001c"></script>
-   <script src="js/content-bridge.js?v=20261001c"></script>
-   <script src="js/community.js?v=20261001c"></script>
-   <script src="js/owner-sync.js?v=20261001c"></script>
+   <script src="js/owner.js?v=20261001d"></script>
+   <script src="js/content-bridge.js?v=20261001d"></script>
+   <script src="js/owner-sync.js?v=20261001d"></script>
 				<script src="js/order-status.js?v=20260925d"></script>
-    <script src="js/app.js?v=20261001c"></script>
+    <script src="js/app.js?v=20261001d"></script>
  <!-- Removed iframe/CLOUDFLARE challenge injection to prevent 404 and MIME errors -->
 </body></html>

@@ -5,7 +5,7 @@
    - Menyembunyikan Discord webhook & token Telegram dari repo.
    - Hanya meneruskan payload yang bentuknya ORDER.
    - Menyimpan order ke Airtable (database order-an owner).
-   - Menyimpan konten owner (pengumuman/event/banner) ke Airtable
+   - Menyimpan konten owner (banner utama dan daftar game) ke Airtable
      dan membacanya kembali untuk semua pengunjung (fitur #2).
 
    Deploy:
@@ -55,7 +55,8 @@ async function sendToTelegram(token, chatId, text) {
 /* ============================================================
    KONTEN OWNER -> PUBLIK (fitur #2)
    ------------------------------------------------------------
-   Konten owner (pengumuman/event/banner/pinned) disimpan sebagai
+Konten owner (banner utama beranda dan daftar game beserta paket)
+disimpan sebagai
    SATU baris JSON di tabel Airtable "Content" dengan ORDER ID =
    'content_owner_1'. Semua pengunjung membaca baris ini lewat
    GET /content; owner menulisnya lewat POST /content (WAJIB salah
@@ -920,6 +921,47 @@ async function handleAdminRoute(request, env, url, headers) {
 		}
 	}
 
+	if (path === '/admin/send-email' && method === 'POST') {
+		try {
+			let body = null;
+			try { body = await request.json(); } catch (e) { body = null; }
+			const to = String((body && body.to) || '').trim();
+			const subject = String((body && body.subject) || '').trim();
+			const html = String((body && body.html) || '').trim();
+			const text = String((body && body.text) || '').trim();
+			if (!to || !subject || (!html && !text)) {
+				return jsonResponse({ success: false, message: 'to, subject, dan html/text wajib diisi' }, 400, headers);
+			}
+			if (!env.SENDGRID_API_KEY) {
+				return jsonResponse({ success: false, message: 'SENDGRID_API_KEY belum dikonfigurasi di Worker' }, 503, headers);
+			}
+			const fromEmail = (env.SENDGRID_FROM_EMAIL || 'noreply@ghothys.store').trim();
+			const fromName = (env.SENDGRID_FROM_NAME || 'Ghothys Store').trim();
+			const sgRes = await fetch('https://api.sendgrid.com/v3/mail/send', {
+				method: 'POST',
+				headers: {
+					'Authorization': 'Bearer ' + env.SENDGRID_API_KEY,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					personalizations: [{ to: [{ email: to }], subject: subject }],
+					from: { email: fromEmail, name: fromName },
+					content: [
+						{ type: 'text/plain', value: text || html.replace(/<[^>]+>/g, '') },
+						{ type: 'text/html', value: html || text }
+					]
+				})
+			});
+			if (!sgRes.ok) {
+				const errText = await sgRes.text();
+				throw new Error('SendGrid HTTP ' + sgRes.status + ': ' + errText);
+			}
+			return jsonResponse({ success: true, message: 'Email terkirim' }, 200, headers);
+		} catch (e) {
+			return jsonResponse({ success: false, message: e.message }, 500, headers);
+		}
+	}
+
 	return jsonResponse({ success: false, message: 'Endpoint admin tidak dikenal.' }, 404, headers);
 }
 
@@ -945,9 +987,9 @@ export default {
         /* ============================================================
            ENDPOINT KONTEN OWNER (fitur #2 - Owner -> Publik)
            ------------------------------------------------------------
-           - GET  /content  -> publik, tanpa secret. Membaca konten
-             owner (pengumuman/event/banner/pinned) dari tabel
-             Airtable "Content" dan mengembalikannya sebagai JSON.
+           - GET  /content  -> publik, tanpa secret. Membaca
+             bannerUtama dan gamePopuler dari tabel Airtable
+             "Content" dan mengembalikannya sebagai JSON.
            - POST /content  -> owner, WAJIB token panel admin (Bearer)
              atau X-Ghothys-Secret sisi server / Cloudflare Access.
              Menyimpan/memperbarui konten owner ke tabel "Content"
@@ -1006,17 +1048,26 @@ export default {
 				   benar-benar kosong DITOLAK kalau di server masih ada
 				   isi, kecuali klien mengirim force:true (owner sengaja
 				   menghapus semua). */
+				/* Kunci yang dihitung hanya yang benar-benar dipakai
+				   pengunjung. Kunci lama announcements/events/banners
+				   sudah tidak lagi dikirim klien, jadi menghitungnya
+				   akan membuat pengaman ini selalu melihat server kosong. */
 				const arr = (v) => (Array.isArray(v) ? v : []);
-				const kosong = arr(bodyJson && bodyJson.announcements).length === 0
-					&& arr(bodyJson && bodyJson.events).length === 0
-					&& arr(bodyJson && bodyJson.banners).length === 0
-					&& !String((bodyJson && bodyJson.pinnedAnnouncement) || '').trim();
+				const jmlBanner = (v) => arr(v).filter((s) => String((s && s.url) || '').trim() !== '').length;
+				const hitungGame = (v) => {
+					if (!v || typeof v !== 'object') return 0;
+					const tampil = Array.isArray(v.tampil) ? v.tampil.length : 0;
+					const paket = (v.paket && typeof v.paket === 'object') ? Object.keys(v.paket).length : 0;
+					const adaPilihan = (v.semuaTampil === false && tampil === 0) ? 1 : 0;
+					return tampil + paket + adaPilihan;
+				};
+				const isiPayload = (v) => jmlBanner(v && v.bannerUtama) + hitungGame(v && v.gamePopuler);
+				const kosong = isiPayload(bodyJson) === 0;
 				const force = bodyJson && bodyJson.force === true;
 				if (kosong && !force) {
 					const sekarang = await getContentFromAirtable(env);
 					const isi = sekarang && sekarang.content ? sekarang.content : {};
-					const isiLama = arr(isi.announcements).length + arr(isi.events).length + arr(isi.banners).length
-						+ (String(isi.pinnedAnnouncement || '').trim() ? 1 : 0);
+					const isiLama = isiPayload(isi);
 					if (isiLama > 0) {
 						return new Response(JSON.stringify({
 							ok: false,

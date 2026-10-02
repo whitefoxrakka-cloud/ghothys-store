@@ -127,6 +127,30 @@
       'Konfirmasi': 'Confirm',
       'Pilih': 'Select',
 
+      /* Panel owner: banner utama dan game populer */
+      'Atur Banner Utama': 'Set Main Banner',
+      'Atur Game Populer': 'Set Popular Games',
+      'Banner Utama': 'Main Banner',
+      'Banner Utama Beranda': 'Homepage Main Banner',
+      'Game Dipilih': 'Games Selected',
+      'Simpan Banner': 'Save Banner',
+      'Kembalikan ke bawaan': 'Return to default',
+      'Daftar Game': 'Game List',
+      'Tampilkan semua': 'Show all',
+      'Sembunyikan semua': 'Hide all',
+      'Kembalikan': 'Return',
+      'Tambah paket': 'Add package',
+      'hapus': 'delete',
+      'Nama paket': 'Package name',
+      'Keterangan': 'Description',
+      'Harga': 'Price',
+      'Jumlah diamond': 'Diamond amount',
+      'Diskon persen': 'Discount percent',
+      'Alamat gambar': 'Image address',
+      'Keterangan gambar': 'Image description',
+      'Perhatian: harga di sini langsung dilihat pembeli':
+        'Warning: the prices here are seen by buyers directly',
+
       // Top up
       'Pilih Paket & Bayar': 'Choose Package & Pay',
       'Masukkan Data': 'Enter Details',
@@ -612,13 +636,6 @@
         window.renderRiwayat();
       } catch (e) {
         console.warn('[BAHASA] riwayat gagal digambar ulang', e);
-      }
-    }
-    if (aktif.id === 'community-page' && typeof window.komunitasSegarkan === 'function') {
-      try {
-        window.komunitasSegarkan();
-      } catch (e) {
-        console.warn('[BAHASA] halaman komunitas gagal digambar ulang', e);
       }
     }
   }

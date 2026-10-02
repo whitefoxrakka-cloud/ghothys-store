@@ -3,7 +3,7 @@
   window.initializeOwnerData = function(){
     const key = window.STORAGE_KEYS.OWNER_PANEL;
     if(!localStorage.getItem(key)){
-      const seed = { announcements: [], events: [], posts: [], pinnedAnnouncement: null, settings: {}, stats: {} };
+      const seed = { bannerUtama: [], gamePopuler: { semuaTampil: true, tampil: [], paket: {} }, posts: [], settings: {}, stats: {} };
       localStorage.setItem(key, JSON.stringify(seed));
     }
   };
@@ -38,11 +38,17 @@
     return /^https:\/\//.test(url) ? url : '';
   }
 
+  /* Kosong berarti panel belum pernah diisi owner di browser ini.
+     Yang dihitung hanya isi yang benar-benar dipakai pengunjung:
+     gambar banner yang dipasang dan game yang dipilih. */
   function isiLokalKosong(){
     const data = window.getOwnerData() || {};
-    return ((data.announcements || []).length === 0)
-        && ((data.events || []).length === 0)
-        && ((data.banners || []).length === 0);
+    const banner = Array.isArray(data.bannerUtama) ? data.bannerUtama : [];
+    const game = data.gamePopuler || {};
+    const adaBanner = banner.some(s => String((s && s.url) || '').trim() !== '');
+    const adaTampil = Array.isArray(game.tampil) ? game.tampil.length : 0;
+    const adaPaket  = Object.keys(game.paket || {}).length;
+    return !adaBanner && !adaTampil && !adaPaket;
   }
 
   window.sinkronkanKontenOwner = function(){
@@ -58,20 +64,21 @@
         const isi = (body && body.ok !== false) ? body.content : null;
         if(!isi) return null;
 
-        const ada = ['announcements', 'events', 'banners'].some(function(k){
-          return Array.isArray(isi[k]) && isi[k].length > 0;
-        });
+        /* Yang dipakai pengunjung cuma banner utama dan daftar game,
+           jadi hanya dua itu yang diambil dari server. */
+        const ada = (Array.isArray(isi.bannerUtama) && isi.bannerUtama.length > 0)
+                 || (isi.gamePopuler && typeof isi.gamePopuler === 'object'
+                     && Object.keys(isi.gamePopuler).length > 0);
         if(!ada) return null;
 
         /* Bentuk datanya sama persis dengan bentuk yang dipakai
-           panel owner, jadi apa adanya yang dipakai./posts,
+           panel owner, jadi apa adanya yang dipakai. posts,
            stats, dan bidang lain milik lokal tetap utuh. */
         const data = window.getOwnerData() || {};
-        data.announcements = Array.isArray(isi.announcements) ? isi.announcements : [];
-        data.events = Array.isArray(isi.events) ? isi.events : [];
-        data.banners = Array.isArray(isi.banners) ? isi.banners : [];
-        if(isi.pinnedAnnouncement !== undefined) data.pinnedAnnouncement = isi.pinnedAnnouncement || null;
-        if(isi.settings) data.settings = isi.settings;
+        data.bannerUtama = Array.isArray(isi.bannerUtama) ? isi.bannerUtama : [];
+        if(isi.gamePopuler && typeof isi.gamePopuler === 'object'){
+          data.gamePopuler = isi.gamePopuler;
+        }
 
         localStorage.setItem(window.STORAGE_KEYS.OWNER_PANEL, JSON.stringify(data));
         return data;
@@ -90,7 +97,8 @@
     if(isiLokalKosong() && typeof window.sinkronkanKontenOwner === 'function'){
       window.sinkronkanKontenOwner().then(function(){
         if(typeof window.renderOwnerDashboard === 'function') window.renderOwnerDashboard();
-        if(typeof window.renderAnnouncements === 'function') window.renderAnnouncements();
+        if(typeof window.renderBannerUtama === 'function') window.renderBannerUtama();
+        if(typeof window.renderGamePopuler === 'function') window.renderGamePopuler();
       });
     }
     if(typeof window.renderOwnerDashboard === 'function') window.renderOwnerDashboard();
@@ -101,372 +109,438 @@
     if(modal){ modal.style.display='none'; document.body.style.overflow='auto'; }
   };
 
-  /* Buka halaman Komunitas supaya owner bisa langsung melihat hasil
-     dari pengumuman, acara, dan banner yang baru ia simpan. */
-  window.bukaHalamanKomunitas = function(){
-    window.closeOwnerPanel();
-    if(typeof window.navigateTo === 'function') window.navigateTo('community-page');
-    if(typeof window.komunitasSegarkan === 'function') window.komunitasSegarkan();
-  };
-
+  /* ============================================================
+     RINGKASAN PANEL
+     ============================================================ */
   window.renderOwnerDashboard = function(){
     const data = window.getOwnerData();
-    const TIDAK_ADA = '-';
-
     const anggota = (typeof window.getAllUsers === 'function') ? window.getAllUsers().length : 0;
+    const banner = Array.isArray(data.bannerUtama) ? data.bannerUtama : [];
+    const terisi = banner.filter(s => String((s && s.url) || '').trim() !== '').length;
+    const konfigurasi = data.gamePopuler || {};
+    const dipilih = Array.isArray(konfigurasi.tampil) ? konfigurasi.tampil.length : 0;
+    const totalKatalog = Array.isArray(window.gamesData) ? window.gamesData.length : 0;
 
-    const pengumuman = (data.announcements && data.announcements.length) ? data.announcements : [];
-    const acara      = (data.events && data.events.length) ? data.events : [];
-    const banner     = (data.banners && data.banners.length) ? data.banners : [];
-
-    /* Hitung mundur. Versi lama memakai Math.min(anggota, 12),
-       yaitu angka rekaan yang selalu tampil padahal tidak ada
-       satu pun pelacakan kehadiran. Kartu itu dihapus dari panel
-       dan digantikan angka yang benar-benar dihitung. */
-    const totalKonten = pengumuman.length + acara.length + banner.length;
-
-    /* Acara mendatang: yang tanggalnya belum lewat, paling dekat.
-       Kalau tidak ada, kartu disembunyikan daripada diisi
-       angka rekaan. */
-    const sekarang = new Date().getTime();
-    const akanDatang = acara
-      .map(ev => ({ ev, waktu: Date.parse(ev.date || ev.tanggal || '') }))
-      .filter(x => isFinite(x.waktu) && x.waktu >= sekarang)
-      .sort((a, b) => a.waktu - b.waktu);
-
-    const disematkan = data.pinnedAnnouncement || TIDAK_ADA;
-    const judulAkanDatang = akanDatang.length ? (akanDatang[0].ev.title || TIDAK_ADA) : '';
-    const pengumumanTerbaru = pengumuman.length ? (pengumuman[pengumuman.length - 1].title || TIDAK_ADA) : TIDAK_ADA;
-    const acaraTerbaru = acara.length ? (acara[acara.length - 1].title || TIDAK_ADA) : TIDAK_ADA;
-
-    const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    const setText = (id, teks) => { const el = document.getElementById(id); if (el) el.textContent = teks; };
     setText('owner-total-members', anggota);
-    setText('owner-total-content', totalKonten);
-    setText('owner-total-announcements', pengumuman.length);
-    setText('owner-total-events', acara.length);
-    setText('owner-pinned-announcement', disematkan);
-    setText('owner-latest-announcement', pengumumanTerbaru);
-    setText('owner-latest-event', acaraTerbaru);
-
-    /* Kartu "Acara Mendatang" disembunyikan kalau memang tidak ada
-       acara yang akan datang, supaya tidak ada kotak kosong. */
-    const kartuMendatang = document.getElementById('owner-upcoming-event-kartu');
-    const teksMendatang = document.getElementById('owner-upcoming-event');
-    if (kartuMendatang && teksMendatang) {
-      const ada = akanDatang.length > 0;
-      kartuMendatang.style.display = ada ? '' : 'none';
-      if (ada) setText('owner-upcoming-event', judulAkanDatang);
-    }
+    setText('owner-total-banner', terisi + ' / ' + JUMLAH_SLIDE);
+    setText('owner-total-game', dipilih + ' / ' + totalKatalog);
   };
 
-  /* Announcement Manager (Phase 2) */
+  /* ============================================================
+     PENYIMPANAN
+     ============================================================ */
   function saveOwnerData(data){
     localStorage.setItem(window.STORAGE_KEYS.OWNER_PANEL, JSON.stringify(data));
-    /* Fitur #2: sinkronkan konten owner ke relay (best-effort, tidak blokir). */
+    /* Best-effort: kirim ke relay kalau sudah login admin. Gagal di
+       sini tidak pernah menggagalkan penyimpanan lokal. */
     if(window.syncOwnerContent) window.syncOwnerContent(data);
+    if(typeof window.renderOwnerDashboard === 'function') window.renderOwnerDashboard();
   }
 
-  window.openAnnouncementManager = function(){
-    if(!requireLoggedIn()) return;
-    const section = document.getElementById('owner-announcements-section');
-    if(section){ section.style.display='block'; }
-    if(typeof window.renderAnnouncements === 'function') window.renderAnnouncements();
-  };
-
-  window.closeAnnouncementManager = function(){
-    const section = document.getElementById('owner-announcements-section');
-    if(section) section.style.display='none';
-  };
-
-  window.renderAnnouncements = function(){
-    const data = window.getOwnerData();
-    const list = document.getElementById('owner-announcements-list');
-    if(!list) return;
-    list.innerHTML = '';
-    const anns = (data.announcements && data.announcements.slice().reverse()) || [];
-    if(anns.length === 0){ list.textContent = 'No announcements yet.'; return; }
-    anns.forEach((a, idx) => {
-      const id = a.id || ('ann_' + idx + '_' + Date.now());
-      const el = document.createElement('div');
-      el.className = 'p-3 rounded border';
-      el.innerHTML = `
-        <div class="flex justify-between items-start">
-          <div>
-            <div class="font-semibold">${escapeHtml(a.title)}</div>
-            <div class="text-sm text-muted">${escapeHtml(a.content)}</div>
-            <div class="text-xs text-gray-400 mt-1">${new Date(a.createdAt).toLocaleString()}</div>
-          </div>
-          <div class="flex flex-col items-end gap-2">
-            <div>${a.pinned? '<span class="text-yellow-400">Pinned</span>':''}</div>
-            <div class="flex gap-2">
-              <button data-action="owner-edit-ann" data-ann-id="${id}" class="px-2 py-1 bg-blue-500 text-white rounded text-sm">Edit</button>
-              <button data-action="owner-del-ann" data-ann-id="${id}" class="px-2 py-1 bg-red-500 text-white rounded text-sm">Delete</button>
-            </div>
-          </div>
-        </div>
-      `;
-      el.dataset.annId = id;
-      list.appendChild(el);
+  function escapeTeks(s){
+    if(s === null || s === undefined) return '';
+    return String(s).replace(/[&<>"']/g, function(c){
+      return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c];
     });
-  };
+  }
 
-  function escapeHtml(s){ if(!s) return ''; return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-
-  function generateId(){ return 'ann_' + Math.random().toString(36).slice(2,9); }
-
-  window.addOwnerAnnouncement = function(title, content, pinned){
-    const data = window.getOwnerData();
-    if(!data.announcements) data.announcements = [];
-    const ann = { id: generateId(), title: title, content: content, pinned: !!pinned, createdAt: new Date().toISOString() };
-    if(ann.pinned) data.pinnedAnnouncement = ann.title;
-    data.announcements.push(ann);
-    saveOwnerData(data);
-    if(typeof window.renderAnnouncements === 'function') window.renderAnnouncements();
-    if(typeof window.renderOwnerDashboard === 'function') window.renderOwnerDashboard();
-  };
-
-  window.deleteOwnerAnnouncement = function(id){
-    const data = window.getOwnerData();
-    if(!data.announcements) return;
-    data.announcements = data.announcements.filter(a => a.id !== id);
-    if(data.pinnedAnnouncement && !data.announcements.find(a=>a.title===data.pinnedAnnouncement)) data.pinnedAnnouncement = null;
-    saveOwnerData(data);
-    if(typeof window.renderAnnouncements === 'function') window.renderAnnouncements();
-    if(typeof window.renderOwnerDashboard === 'function') window.renderOwnerDashboard();
-  };
-
-  // wire announcement form and delegated buttons
-  document.addEventListener('DOMContentLoaded', function(){
-    const form = document.getElementById('owner-announcement-form');
-    if(form){
-      form.addEventListener('submit', function(e){
-        e.preventDefault();
-        const title = document.getElementById('announcement-title').value.trim();
-        const content = document.getElementById('announcement-content').value.trim();
-        const pinned = document.getElementById('announcement-pin').checked;
-        if(!title || !content) return window.showErrorToast('Invalid','Title & content required');
-        window.addOwnerAnnouncement(title, content, pinned);
-        form.reset();
-      });
+  /* Selalu dipanggil lewat window, supaya this di dalam fungsi asal
+     tidak hilang. */
+  function tampilkanPesan(pesan, galat){
+    if(galat){
+      if(typeof window.showErrorToast === 'function') window.showErrorToast(pesan);
+      return;
     }
+    if(typeof window.showToast === 'function') window.showToast(pesan);
+  }
 
-    const list = document.getElementById('owner-announcements-list');
+  /* ============================================================
+     BANNER UTAMA - tiga gambar beranda
+     ============================================================ */
+  const JUMLAH_SLIDE = 3;
 
-  /* Event Manager (Phase 3) */
-  window.openEventManager = function(){
+  function bannerOwner(){
+    const data = window.getOwnerData();
+    const list = Array.isArray(data.bannerUtama) ? data.bannerUtama : [];
+    const hasil = [];
+    for(let i = 0; i < JUMLAH_SLIDE; i++) hasil.push(list[i] || {});
+    return hasil;
+  }
+
+  window.openBannerUtamaManager = function(){
     if(!requireLoggedIn()) return;
-    const section = document.getElementById('owner-events-section');
-    if(section){ section.style.display='block'; }
-    if(typeof window.renderEvents === 'function') window.renderEvents();
+    const section = document.getElementById('owner-banner-utama-section');
+    if(section) section.style.display = 'block';
+    window.renderBannerUtama();
   };
 
-  window.closeEventManager = function(){
-    const section = document.getElementById('owner-events-section');
-    if(section) section.style.display='none';
+  window.closeBannerUtamaManager = function(){
+    const section = document.getElementById('owner-banner-utama-section');
+    if(section) section.style.display = 'none';
   };
 
-  window.renderEvents = function(){
-    const data = window.getOwnerData();
-    const list = document.getElementById('owner-events-list');
-    if(!list) return;
-    list.innerHTML = '';
-    const events = (data.events && data.events.slice().sort((a,b)=> new Date(a.date) - new Date(b.date))) || [];
-    if(events.length === 0){ list.textContent = 'No events yet.'; return; }
-    events.forEach((ev, idx) => {
-      const id = ev.id || ('ev_' + idx + '_' + Date.now());
-      const el = document.createElement('div');
-      el.className = 'p-3 rounded border';
-      el.innerHTML = `
-        <div class="flex justify-between items-start">
-          <div>
-            <div class="font-semibold">${escapeHtml(ev.title)}</div>
-            <div class="text-sm text-muted">${escapeHtml(ev.description||'')}</div>
-            <div class="text-xs text-gray-400 mt-1">${new Date(ev.date).toLocaleString()}</div>
-          </div>
-          <div class="flex flex-col items-end gap-2">
-            <div class="flex gap-2">
-              <button data-action="owner-edit-ev" data-ev-id="${id}" class="px-2 py-1 bg-blue-500 text-white rounded text-sm">Edit</button>
-              <button data-action="owner-del-ev" data-ev-id="${id}" class="px-2 py-1 bg-red-500 text-white rounded text-sm">Delete</button>
-            </div>
-          </div>
-        </div>
-      `;
-      el.dataset.evId = id;
-      list.appendChild(el);
-    });
-  };
-
-  window.addOwnerEvent = function(title, date, description){
-    const data = window.getOwnerData();
-    if(!data.events) data.events = [];
-    const ev = { id: generateId(), title: title, date: date, description: description||'', createdAt: new Date().toISOString() };
-    data.events.push(ev);
-    saveOwnerData(data);
-    if(typeof window.renderEvents === 'function') window.renderEvents();
-    if(typeof window.renderOwnerDashboard === 'function') window.renderOwnerDashboard();
-  };
-
-  window.deleteOwnerEvent = function(id){
-    const data = window.getOwnerData();
-    if(!data.events) return;
-    data.events = data.events.filter(a => a.id !== id);
-    saveOwnerData(data);
-    if(typeof window.renderEvents === 'function') window.renderEvents();
-    if(typeof window.renderOwnerDashboard === 'function') window.renderOwnerDashboard();
-  };
-
-  // wire event form and delegated buttons
-  document.addEventListener('DOMContentLoaded', function(){
-    const form = document.getElementById('owner-event-form');
-    if(form){
-      form.addEventListener('submit', function(e){
-        e.preventDefault();
-        const title = document.getElementById('event-title').value.trim();
-        const date = document.getElementById('event-date').value;
-        const description = document.getElementById('event-description').value.trim();
-        if(!title || !date) return window.showErrorToast('Invalid','Title & date required');
-        window.addOwnerEvent(title, date, description);
-        form.reset();
-      });
+  window.renderBannerUtama = function(){
+    const list = bannerOwner();
+    for(let i = 0; i < JUMLAH_SLIDE; i++){
+      const nomor = i + 1;
+      const slot = list[i];
+      const inUrl = document.getElementById('owner-banner-' + nomor + '-url');
+      const inAlt = document.getElementById('owner-banner-' + nomor + '-alt');
+      const img   = document.getElementById('owner-banner-' + nomor + '-pratinjau');
+      if(inUrl) inUrl.value = String(slot.url || '');
+      if(inAlt) inAlt.value = String(slot.alt || '');
+      if(img) img.setAttribute('src', String(slot.url || '').trim());
     }
+  };
 
-    const list = document.getElementById('owner-events-list');
-    if(list){
-      list.addEventListener('click', function(e){
-        const btn = e.target.closest('button[data-action]');
-        if(!btn) return;
-        const action = btn.dataset.action;
-        const id = btn.dataset.evId;
-        if(action === 'owner-del-ev'){
-          if(confirm('Hapus event ini?')) window.deleteOwnerEvent(id);
-        } else if(action === 'owner-edit-ev'){
-          const data = window.getOwnerData();
-          const ev = data.events.find(a=>a.id===id);
-          if(!ev) return;
-          const newTitle = prompt('Edit title', ev.title) || ev.title;
-          const newDate = prompt('Edit date (ISO)', ev.date) || ev.date;
-          const newDesc = prompt('Edit description', ev.description) || ev.description;
-          ev.title = newTitle; ev.date = newDate; ev.description = newDesc;
-          saveOwnerData(data);
-          if(typeof window.renderEvents === 'function') window.renderEvents();
-          if(typeof window.renderOwnerDashboard === 'function') window.renderOwnerDashboard();
-        }
-      });
-    }
-  });
-
-  /* Banner / Gallery Manager (Phase 4) */
-  window.openBannerManager = function(){
+  window.simpanBannerUtama = function(){
     if(!requireLoggedIn()) return;
-    const section = document.getElementById('owner-banners-section');
-    if(section){ section.style.display='block'; }
-    if(typeof window.renderBanners === 'function') window.renderBanners();
-  };
-
-  window.closeBannerManager = function(){
-    const section = document.getElementById('owner-banners-section');
-    if(section) section.style.display='none';
-  };
-
-  window.renderBanners = function(){
     const data = window.getOwnerData();
-    const list = document.getElementById('owner-banners-list');
-    if(!list) return;
-    list.innerHTML = '';
-    const banners = (data.banners && data.banners.slice().reverse()) || [];
-    if(banners.length === 0){ list.textContent = 'No banners yet.'; return; }
-    banners.forEach((b, idx) => {
-      const id = b.id || ('bn_' + idx + '_' + Date.now());
-      const el = document.createElement('div');
-      el.className = 'rounded overflow-hidden border p-1';
-      el.style.minHeight = '80px';
-      el.innerHTML = `
-        <div class="relative">
-          <img src="${b.data}" alt="banner" style="width:100%;height:100px;object-fit:cover;display:block;" />
-          <div class="absolute top-1 right-1">
-            <button data-action="owner-del-banner" data-banner-id="${id}" class="px-2 py-1 bg-red-600 text-white rounded text-xs">Delete</button>
-          </div>
-        </div>
-      `;
-      el.dataset.bannerId = id;
-      list.appendChild(el);
+    const isi = [];
+    for(let i = 0; i < JUMLAH_SLIDE; i++){
+      const nomor = i + 1;
+      const inUrl = document.getElementById('owner-banner-' + nomor + '-url');
+      const inAlt = document.getElementById('owner-banner-' + nomor + '-alt');
+      isi.push({
+        slot: nomor,
+        url: inUrl ? String(inUrl.value || '').trim() : '',
+        alt: inAlt ? String(inAlt.value || '').trim() : ''
+      });
+    }
+    data.bannerUtama = isi;
+    saveOwnerData(data);
+    tampilkanPesan('Banner tersimpan', false);
+  };
+
+  window.kembalikanBannerBawaan = function(){
+    if(!requireLoggedIn()) return;
+    if(!confirm('Kembalikan tiga banner ke gambar bawaan di beranda?')) return;
+    const data = window.getOwnerData();
+    data.bannerUtama = [];
+    saveOwnerData(data);
+    window.renderBannerUtama();
+  };
+
+  /* ============================================================
+     GAME POPULER - pilih game, edit paket dan harga
+     ============================================================ */
+
+  /* Bentuk data yang disimpan owner:
+       semuaTampil : belum ada berarti semua game tampil (bawaan).
+                    false berarti hanya isi "tampil" yang dipakai.
+       tampil      : daftar kunci game yang tampil, urut = urutan
+                    di beranda.
+       paket       : kunci game -> daftar paket hasil editan owner.
+     Paket yang tidak ada di "paket" memakai paket bawaan katalog. */
+  function gamePopulerOwner(){
+    const data = window.getOwnerData();
+    const konfigurasi = data.gamePopuler || {};
+    return {
+      semuaTampil: konfigurasi.semuaTampil !== false,
+      tampil: Array.isArray(konfigurasi.tampil) ? konfigurasi.tampil.slice() : [],
+      paket: (konfigurasi.paket && typeof konfigurasi.paket === 'object') ? konfigurasi.paket : {}
+    };
+  }
+
+  function katalog(){
+    return Array.isArray(window.gamesData) ? window.gamesData : [];
+  }
+
+  function cariGame(kunci){
+    return katalog().filter(g => String(g.searchKey) === String(kunci))[0] || null;
+  }
+
+  /* Urutan di panel mengikuti urutan tampil yang tersimpan, game yang
+     tidak dipilih menyusul di bawah supaya owner tidak perlu menggulir. */
+  function urutanPanel(konfigurasi){
+    const semua = katalog();
+    if(konfigurasi.semuaTampil) return semua.slice();
+    const sudah = {};
+    const depan = [];
+    konfigurasi.tampil.forEach(function(kunci){
+      const k = String(kunci);
+      if(sudah[k]) return;
+      sudah[k] = true;
+      const g = cariGame(k);
+      if(g) depan.push(g);
     });
+    return depan.concat(semua.filter(g => !sudah[String(g.searchKey)]));
+  }
+
+  window.openGamePopulerManager = function(){
+    if(!requireLoggedIn()) return;
+    const section = document.getElementById('owner-game-populer-section');
+    if(section) section.style.display = 'block';
+    window.renderGamePopuler();
   };
 
-  window.addOwnerBanner = function(dataUrl){
+  window.closeGamePopulerManager = function(){
+    const section = document.getElementById('owner-game-populer-section');
+    if(section) section.style.display = 'none';
+  };
+
+  function kolomPaket(peran, nomor, nilai, tipe){
+    return '<td class="p-1"><input data-peran="' + peran + '" data-no="' + nomor + '" '
+      + 'type="' + tipe + '" '
+      + 'min="0" step="1" value="' + escapeTeks(nilai) + '" '
+      + 'class="w-full p-1 rounded text-xs" '
+      + 'style="background:var(--bg-card);color:var(--text-primary);" /></td>';
+  }
+
+  function tombolHapusPaket(){
+    return '<td class="p-1 text-center">'
+      + '<button type="button" class="owner-paket-hapus px-2 py-1 rounded text-xs text-white" '
+      + 'style="background:#b91c1c;" title="Hapus baris paket ini">hapus</button></td>';
+  }
+
+  function barisPaketKosong(){
+    return '<tr>' + kolomPaket('nama', 0, '', 'text') + kolomPaket('detail', 0, '', 'text')
+      + kolomPaket('harga', 0, 0, 'number') + kolomPaket('points', 0, 0, 'number')
+      + kolomPaket('discount', 0, 0, 'number') + tombolHapusPaket() + '</tr>';
+  }
+
+  function barisPaketIsi(p, nomor){
+    return '<tr>' + kolomPaket('nama', nomor, p.name, 'text')
+      + kolomPaket('detail', nomor, p.detail, 'text')
+      + kolomPaket('harga', nomor, p.price, 'number')
+      + kolomPaket('points', nomor, p.points, 'number')
+      + kolomPaket('discount', nomor, p.discount, 'number')
+      + tombolHapusPaket() + '</tr>';
+  }
+
+  window.renderGamePopuler = function(){
+    const wadah = document.getElementById('owner-game-list');
+    if(!wadah) return;
+    const konfigurasi = gamePopulerOwner();
+    const urutan = urutanPanel(konfigurasi);
+    if(!urutan.length){
+      wadah.innerHTML = '<p class="text-sm" style="color:var(--text-secondary);">'
+        + 'Katalog game belum termuat. Muat ulang halaman lalu buka bagian ini lagi.</p>';
+      return;
+    }
+    const tampil = {};
+    if(konfigurasi.semuaTampil){
+      urutan.forEach(function(g){ tampil[String(g.searchKey)] = true; });
+    } else {
+      konfigurasi.tampil.forEach(function(k){ tampil[String(k)] = true; });
+    }
+
+    wadah.innerHTML = urutan.map(function(g){
+      const kunci = String(g.searchKey);
+      const dicentang = !!tampil[kunci];
+      const bawaan = Array.isArray(g.packages) ? g.packages : [];
+      const milik = konfigurasi.paket[kunci];
+      const diubah = Array.isArray(milik) && milik.length > 0;
+      const paket = diubah ? milik : bawaan;
+
+      const baris = paket.map(barisPaketIsi).join('');
+
+      return ''
+        + '<div class="rounded border" style="border-color:var(--border-color);" data-game-key="' + escapeTeks(kunci) + '">'
+        + '  <div class="flex items-center gap-2 p-2 flex-wrap">'
+        + '    <label class="flex items-center gap-2 flex-1 cursor-pointer" style="min-width:180px;">'
+        + '      <input type="checkbox" class="owner-game-centang" ' + (dicentang ? 'checked' : '') + ' />'
+        + '      <span class="font-semibold text-sm">' + escapeTeks(g.name) + '</span>'
+        + '      <span class="text-xs" style="color:var(--text-secondary);">' + escapeTeks(kunci) + '</span>'
+        + '    </label>'
+        + '    <span class="text-xs" style="color:var(--text-secondary);">' + (diubah ? 'paket hasil editan owner' : 'paket bawaan') + '</span>'
+        + '    <button type="button" class="owner-game-simpan px-3 py-1 rounded text-xs text-white" style="background:#4f46e5;">Simpan</button>'
+        + '    <button type="button" class="owner-game-kembalikan px-3 py-1 rounded text-xs" style="background:var(--bg-card);color:var(--text-primary);">Kembalikan</button>'
+        + '  </div>'
+        + '  <div class="owner-game-detail px-2 pb-2" style="display:' + (dicentang ? 'block' : 'none') + '">'
+        + '    <p class="text-xs mb-1" style="color:var(--text-secondary);">'
+        + '      Harga ditulis angka saja, tanpa tanda rupiah dan tanpa titik. Bawaan '
+        + Math.max(0, bawaan.length) + ' paket, sedang dipakai ' + paket.length + ' paket.'
+        + '    </p>'
+        + '    <div class="overflow-x-auto"><table class="w-full text-xs">'
+        + '      <thead><tr style="color:var(--text-secondary);">'
+        + '        <th class="p-1 text-left">Nama paket</th>'
+        + '        <th class="p-1 text-left">Keterangan</th>'
+        + '        <th class="p-1 text-left">Harga</th>'
+        + '        <th class="p-1 text-left">Jumlah diamond</th>'
+        + '        <th class="p-1 text-left">Diskon persen</th>'
+        + '        <th class="p-1"></th>'
+        + '      </tr></thead>'
+        + '      <tbody>' + baris + '</tbody>'
+        + '    </table></div>'
+        + '    <button type="button" class="owner-paket-tambah mt-2 px-3 py-1 rounded text-xs text-white" style="background:#16a34a;">Tambah paket</button>'
+        + '  </div>'
+        + '</div>';
+    }).join('');
+  };
+
+  /* Baca baris paket yang sedang diedit di layar. Baris tanpa nama
+     dilewati, karena paket tanpa nama tidak bisa dijual. */
+  function kumpulkanPaket(baris){
+    const hasil = [];
+    baris.querySelectorAll('tbody tr').forEach(function(tr){
+      const ambil = function(peran){
+        const kolom = tr.querySelector('input[data-peran="' + peran + '"]');
+        return kolom ? String(kolom.value || '').trim() : '';
+      };
+      const nama = ambil('nama');
+      if(!nama) return;
+      const harga  = parseInt(ambil('harga').replace(/\D/g, ''), 10);
+      const poin   = parseInt(ambil('points').replace(/\D/g, ''), 10);
+      const diskon = parseInt(ambil('discount').replace(/\D/g, ''), 10);
+      hasil.push({
+        name: nama,
+        detail: ambil('detail'),
+        price: isFinite(harga) ? harga : 0,
+        points: isFinite(poin) ? poin : 0,
+        discount: isFinite(diskon) ? diskon : 0
+      });
+    });
+    return hasil;
+  }
+
+  window.simpanPaketGame = function(kunci, baris){
+    if(!requireLoggedIn()) return;
+    if(!baris) return;
+    const paket = kumpulkanPaket(baris);
+    if(!paket.length){
+      tampilkanPesan('Belum ada paket yang bisa disimpan', true);
+      return;
+    }
+    /* Peringatan harga. Angka yang salah ketik langsung terlihat
+       pembeli, jadi perubahan daftar paket dicek dulu. */
+    const g = cariGame(kunci);
+    const namaGame = g ? g.name : String(kunci);
+    const bawaan = (g && Array.isArray(g.packages)) ? g.packages : [];
+    const namaBawaan = {};
+    bawaan.forEach(function(p){ namaBawaan[String(p.name)] = true; });
+    const hilang = bawaan.filter(function(p){
+      return !paket.some(function(x){ return String(x.name) === String(p.name); });
+    });
+    const baru = paket.filter(function(p){ return !namaBawaan[String(p.name)]; });
+    if(hilang.length || baru.length){
+      const rincian = [];
+      hilang.forEach(function(p){ rincian.push('hilang: ' + p.name); });
+      baru.forEach(function(p){ rincian.push('baru: ' + p.name); });
+      const pesan = 'Daftar paket ' + namaGame + ' berubah.\n'
+        + rincian.join('\n') + '\n\n'
+        + 'Harga ikut tersimpan dan langsung dilihat pembeli. Lanjutkan?';
+      if(!confirm(pesan)) return;
+    }
     const data = window.getOwnerData();
-    if(!data.banners) data.banners = [];
-    const banner = { id: generateId(), data: dataUrl, createdAt: new Date().toISOString() };
-    data.banners.push(banner);
+    data.gamePopuler = data.gamePopuler || {};
+    data.gamePopuler.paket = data.gamePopuler.paket || {};
+    data.gamePopuler.paket[String(kunci)] = paket;
     saveOwnerData(data);
-    if(typeof window.renderBanners === 'function') window.renderBanners();
-    if(typeof window.renderOwnerDashboard === 'function') window.renderOwnerDashboard();
+    window.renderGamePopuler();
+    tampilkanPesan(namaGame + ' tersimpan', false);
   };
 
-  window.deleteOwnerBanner = function(id){
+  window.kembalikanGameBawaan = function(kunci){
+    if(!requireLoggedIn()) return;
+    if(!confirm('Kembalikan paket game ini ke bawaan katalog?')) return;
     const data = window.getOwnerData();
-    if(!data.banners) return;
-    data.banners = data.banners.filter(b => b.id !== id);
+    if(data.gamePopuler && data.gamePopuler.paket){
+      delete data.gamePopuler.paket[String(kunci)];
+    }
     saveOwnerData(data);
-    if(typeof window.renderBanners === 'function') window.renderBanners();
+    window.renderGamePopuler();
   };
 
-  // wire banner upload and delete
+  window.tambahPaketGame = function(baris){
+    if(!requireLoggedIn()) return;
+    const tbody = baris ? baris.querySelector('tbody') : null;
+    if(!tbody) return;
+    tbody.insertAdjacentHTML('beforeend', barisPaketKosong());
+  };
+
+  window.hapusPaketGame = function(tombol){
+    if(!requireLoggedIn()) return;
+    if(!confirm('Hapus baris paket ini dari daftar?')) return;
+    const tr = tombol ? tombol.closest('tr') : null;
+    if(tr && tr.parentNode) tr.parentNode.removeChild(tr);
+  };
+
+  /* Perubahan centang langsung tersimpan, jadi owner tidak perlu
+     menekan Simpan hanya untuk menyetel game mana yang tampil. */
+  function pasangPanelGame(){
+    const wadah = document.getElementById('owner-game-list');
+    if(!wadah || wadah.dataset.terpasang === '1') return;
+    wadah.dataset.terpasang = '1';
+
+    wadah.addEventListener('change', function(ev){
+      const centang = ev.target.closest('.owner-game-centang');
+      if(!centang) return;
+      const baris = centang.closest('[data-game-key]');
+      if(!baris) return;
+      const kunci = String(baris.dataset.gameKey);
+      const detail = baris.querySelector('.owner-game-detail');
+      if(detail) detail.style.display = centang.checked ? 'block' : 'none';
+
+      const konfigurasi = gamePopulerOwner();
+      const set = {};
+      konfigurasi.tampil.forEach(function(k){ set[String(k)] = true; });
+      if(centang.checked) set[kunci] = true; else delete set[kunci];
+
+      /* Urutan tampil mengikuti urutan daftar di panel, supaya urutan
+         di beranda sama dengan yang dilihat owner. */
+      const urutan = urutanPanel(konfigurasi).map(function(g){ return String(g.searchKey); });
+      const tampil = urutan.filter(function(k){ return !!set[k]; });
+      /* Game yang tidak ada di katalog ikut dipertahankan. */
+      konfigurasi.tampil.forEach(function(k){
+        if(urutan.indexOf(String(k)) < 0 && set[String(k)]) tampil.push(String(k));
+      });
+
+      const data = window.getOwnerData();
+      data.gamePopuler = data.gamePopuler || {};
+      data.gamePopuler.semuaTampil = false;
+      data.gamePopuler.tampil = tampil;
+      saveOwnerData(data);
+    });
+
+    wadah.addEventListener('click', function(ev){
+      const tombol = ev.target.closest('button');
+      if(!tombol) return;
+      const baris = tombol.closest('[data-game-key]');
+      if(!baris) return;
+      if(tombol.classList.contains('owner-game-simpan')){
+        window.simpanPaketGame(baris.dataset.gameKey, baris);
+      } else if(tombol.classList.contains('owner-game-kembalikan')){
+        window.kembalikanGameBawaan(baris.dataset.gameKey);
+      } else if(tombol.classList.contains('owner-paket-tambah')){
+        window.tambahPaketGame(baris);
+      } else if(tombol.classList.contains('owner-paket-hapus')){
+        window.hapusPaketGame(tombol);
+      }
+    });
+  }
+
+  window.setSemuaGame = function(tampilkanSemua){
+    if(!requireLoggedIn()) return;
+    const data = window.getOwnerData();
+    data.gamePopuler = data.gamePopuler || {};
+    if(tampilkanSemua){
+      data.gamePopuler.semuaTampil = true;
+      data.gamePopuler.tampil = [];
+    } else {
+      if(!confirm('Menyembunyikan semua game akan membuat katalog kosong untuk pembeli. Lanjutkan?')) return;
+      data.gamePopuler.semuaTampil = false;
+      data.gamePopuler.tampil = [];
+    }
+    saveOwnerData(data);
+    window.renderGamePopuler();
+  };
+
   document.addEventListener('DOMContentLoaded', function(){
-    const uplBtn = document.getElementById('owner-banner-upload-btn');
-    const input = document.getElementById('owner-banner-input');
-    if(uplBtn && input){
-      uplBtn.addEventListener('click', function(){ input.click(); });
-      input.addEventListener('change', function(e){
-        const f = input.files && input.files[0];
-        if(!f) return;
-        if(f.size > 2 * 1024 * 1024) {
-          if(!confirm('File besar—lanjutkan?')) return;
-        }
-        const reader = new FileReader();
-        reader.onload = function(ev){
-          const dataUrl = ev.target.result;
-          window.addOwnerBanner(dataUrl);
-        };
-        reader.readAsDataURL(f);
-      });
-    }
+    const simpanBanner = document.getElementById('owner-banner-utama-simpan');
+    if(simpanBanner) simpanBanner.addEventListener('click', function(){ window.simpanBannerUtama(); });
 
-    const list = document.getElementById('owner-banners-list');
-    if(list){
-      list.addEventListener('click', function(e){
-        const btn = e.target.closest('button[data-action]');
-        if(!btn) return;
-        const action = btn.dataset.action;
-        const id = btn.dataset.bannerId;
-        if(action === 'owner-del-banner'){
-          if(confirm('Hapus banner ini?')) window.deleteOwnerBanner(id);
-        }
-      });
-    }
-  });
-    if(list){
-      list.addEventListener('click', function(e){
-        const btn = e.target.closest('button[data-action]');
-        if(!btn) return;
-        const action = btn.dataset.action;
-        const id = btn.dataset.annId;
-        if(action === 'owner-del-ann'){
-          if(confirm('Hapus pengumuman ini?')) window.deleteOwnerAnnouncement(id);
-        } else if(action === 'owner-edit-ann'){
-          // simple edit prompt for now
-          const data = window.getOwnerData();
-          const ann = data.announcements.find(a=>a.id===id);
-          if(!ann) return;
-          const newTitle = prompt('Edit title', ann.title) || ann.title;
-          const newContent = prompt('Edit content', ann.content) || ann.content;
-          ann.title = newTitle; ann.content = newContent;
-          saveOwnerData(data);
-          if(typeof window.renderAnnouncements === 'function') window.renderAnnouncements();
-          if(typeof window.renderOwnerDashboard === 'function') window.renderOwnerDashboard();
-        }
-      });
-    }
+    const kembaliBanner = document.getElementById('owner-banner-utama-kembalikan');
+    if(kembaliBanner) kembaliBanner.addEventListener('click', function(){ window.kembalikanBannerBawaan(); });
+
+    const tombolSemua = document.getElementById('owner-game-semua');
+    if(tombolSemua) tombolSemua.addEventListener('click', function(){ window.setSemuaGame(true); });
+
+    const tombolTidak = document.getElementById('owner-game-tidak');
+    if(tombolTidak) tombolTidak.addEventListener('click', function(){ window.setSemuaGame(false); });
+
+    pasangPanelGame();
   });
 
 /* Tombol OWNER PANEL hanya muncul untuk user yang sudah login di toko
