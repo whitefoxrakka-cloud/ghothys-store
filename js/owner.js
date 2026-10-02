@@ -337,7 +337,7 @@
       const baris = paket.map(barisPaketIsi).join('');
 
       return ''
-        + '<div class="rounded border" style="border-color:var(--border-color);" data-game-key="' + escapeTeks(kunci) + '">'
+        + '<div class="rounded border" style="border-color:var(--border-color);break-inside:avoid;margin-bottom:0.5rem;" data-game-key="' + escapeTeks(kunci) + '">'
         + '  <div class="flex items-center gap-2 p-2 flex-wrap">'
         + '    <label class="flex items-center gap-2 flex-1 cursor-pointer" style="min-width:180px;">'
         + '      <input type="checkbox" class="owner-game-centang" ' + (dicentang ? 'checked' : '') + ' />'
