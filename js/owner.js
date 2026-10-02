@@ -273,6 +273,7 @@
     const section = document.getElementById('owner-game-populer-section');
     if(section) section.style.display = 'block';
     window.renderGamePopuler();
+    window.renderRiwayatHarga();
   };
 
   window.closeGamePopulerManager = function(){
@@ -426,9 +427,26 @@
     const data = window.getOwnerData();
     data.gamePopuler = data.gamePopuler || {};
     data.gamePopuler.paket = data.gamePopuler.paket || {};
-    data.gamePopuler.paket[String(kunci)] = paket;
+    const kunciSimpan = String(kunci);
+    const tersimpanSebelum = data.gamePopuler.paket[kunciSimpan];
+    const adaSebelum = Array.isArray(tersimpanSebelum) && tersimpanSebelum.length > 0;
+    const sebelum = adaSebelum ? salinPaket(tersimpanSebelum) : salinPaket(bawaan);
+    const berubah = window.ringkasPerubahanPaket(sebelum, paket);
+    if(berubah.length){
+      catatRiwayatHarga(data, {
+        waktu: new Date().toISOString(),
+        kunci: kunciSimpan,
+        nama: namaGame,
+        aksi: 'simpan',
+        pulihKeAda: adaSebelum,
+        pulihKePaket: sebelum,
+        berubah: berubah
+      });
+    }
+    data.gamePopuler.paket[kunciSimpan] = paket;
     saveOwnerData(data);
     window.renderGamePopuler();
+    window.renderRiwayatHarga();
     tampilkanPesan(namaGame + ' tersimpan', false);
   };
 
@@ -436,11 +454,28 @@
     if(!requireLoggedIn()) return;
     if(!confirm('Kembalikan paket game ini ke bawaan katalog?')) return;
     const data = window.getOwnerData();
+    const kunciKembali = String(kunci);
+    const tersimpan = (data.gamePopuler && data.gamePopuler.paket)
+      ? data.gamePopuler.paket[kunciKembali] : null;
+    if(Array.isArray(tersimpan) && tersimpan.length > 0){
+      const g = cariGame(kunci);
+      const bawaan = (g && Array.isArray(g.packages)) ? g.packages : [];
+      catatRiwayatHarga(data, {
+        waktu: new Date().toISOString(),
+        kunci: kunciKembali,
+        nama: g ? g.name : kunciKembali,
+        aksi: 'kembalikan',
+        pulihKeAda: true,
+        pulihKePaket: salinPaket(tersimpan),
+        berubah: window.ringkasPerubahanPaket(salinPaket(tersimpan), salinPaket(bawaan))
+      });
+    }
     if(data.gamePopuler && data.gamePopuler.paket){
-      delete data.gamePopuler.paket[String(kunci)];
+      delete data.gamePopuler.paket[kunciKembali];
     }
     saveOwnerData(data);
     window.renderGamePopuler();
+    window.renderRiwayatHarga();
   };
 
   window.tambahPaketGame = function(baris){
@@ -527,6 +562,305 @@
     window.renderGamePopuler();
   };
 
+  /* ============================================================
+     CATATAN PERUBAHAN HARGA
+     ------------------------------------------------------------
+     Setiap kali daftar paket satu game disimpan (atau dikembalikan
+     ke bawaan), keadaan sebelumnya dicatat. Owner bisa melihat
+     harga lama lalu harga baru, dan memulihkannya kalau salah
+     ketik. Catatan hidup di browser ini saja, tidak ikut ke server.
+     ============================================================ */
+  const BATAS_RIWAYAT_HARGA = 15;
+
+  function salinPaket(list){
+    return (Array.isArray(list) ? list : []).map(function(p){
+      return { name: p.name, detail: p.detail, price: p.price, points: p.points, discount: p.discount };
+    });
+  }
+
+  window.riwayatHargaOwner = function(){
+    const data = window.getOwnerData();
+    const r = data.gamePopuler && data.gamePopuler.riwayatHarga;
+    return Array.isArray(r) ? r : [];
+  };
+
+  /* Bandingkan dua daftar paket, kembalikan baris yang berubah,
+     ditambah, atau dihapus. Dipakai untuk catatan dan tampilan. */
+  window.ringkasPerubahanPaket = function(sebelum, sesudah){
+    const a = Array.isArray(sebelum) ? sebelum : [];
+    const b = Array.isArray(sesudah) ? sesudah : [];
+    const petaA = {};
+    const petaB = {};
+    a.forEach(function(p){ petaA[String(p.name)] = p; });
+    b.forEach(function(p){ petaB[String(p.name)] = p; });
+    const hasil = [];
+    a.forEach(function(p){
+      const n = String(p.name);
+      const s = petaB[n];
+      if(!s){
+        hasil.push({ nama: n, lama: salinPaket([p])[0], baru: null });
+        return;
+      }
+      if(String(p.price) !== String(s.price)
+        || String(p.points) !== String(s.points)
+        || String(p.discount) !== String(s.discount)){
+        hasil.push({ nama: n, lama: salinPaket([p])[0], baru: salinPaket([s])[0] });
+      }
+    });
+    b.forEach(function(p){
+      const n = String(p.name);
+      if(!petaA[n]) hasil.push({ nama: n, lama: null, baru: salinPaket([p])[0] });
+    });
+    return hasil;
+  };
+
+  function catatRiwayatHarga(data, catatan){
+    data.gamePopuler = data.gamePopuler || {};
+    const lama = Array.isArray(data.gamePopuler.riwayatHarga) ? data.gamePopuler.riwayatHarga : [];
+    lama.unshift(catatan);
+    data.gamePopuler.riwayatHarga = lama.slice(0, BATAS_RIWAYAT_HARGA);
+  }
+
+  function waktuRingkas(iso){
+    const d = new Date(iso);
+    if(isNaN(d.getTime())) return String(iso == null ? '' : iso);
+    try {
+      return d.toLocaleString('id-ID', {
+        day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+    } catch(e){
+      return d.toISOString();
+    }
+  }
+
+  function rupiahRingkas(n){
+    const angka = Number(n);
+    if(!isFinite(angka)) return '-';
+    return 'Rp ' + angka.toLocaleString('id-ID');
+  }
+
+  window.renderRiwayatHarga = function(){
+    const wadah = document.getElementById('owner-riwayat-harga');
+    if(!wadah) return;
+    const riwayat = window.riwayatHargaOwner();
+    if(!riwayat.length){
+      wadah.innerHTML = '<p class="text-xs" style="color:var(--text-secondary);">Belum ada catatan perubahan harga.</p>';
+      return;
+    }
+    wadah.innerHTML = riwayat.map(function(c, i){
+      const berubah = Array.isArray(c.berubah) ? c.berubah : [];
+      const rincian = berubah.slice(0, 5).map(function(b){
+        const lama = b.lama ? rupiahRingkas(b.lama.price) : 'belum ada';
+        const baru = b.baru ? rupiahRingkas(b.baru.price) : 'dihapus';
+        return escapeTeks(b.nama) + ': ' + lama + ' → ' + baru;
+      }).join(' · ');
+      const sisa = berubah.length > 5 ? ' · +' + (berubah.length - 5) + ' lagi' : '';
+      const judul = c.aksi === 'kembalikan' ? 'dikembalikan ke bawaan' : 'disimpan';
+      return ''
+        + '<div class="rounded p-2 mb-1 flex items-start justify-between gap-2" style="background:var(--bg-card);">'
+        + '  <div style="min-width:0;">'
+        + '    <div class="text-xs font-semibold">' + escapeTeks(c.nama) + ' — ' + judul + '</div>'
+        + '    <div class="text-xs" style="color:var(--text-secondary);">' + escapeTeks(waktuRingkas(c.waktu)) + '</div>'
+        + '    <div class="text-xs" style="color:var(--text-secondary);">'
+        + (rincian ? rincian + sisa : 'tanpa perubahan angka') + '</div>'
+        + '  </div>'
+        + '  <button type="button" class="owner-riwayat-pulihkan px-2 py-1 rounded text-xs text-white"'
+        + ' style="background:#4f46e5;" data-pulihkan="' + i + '">Pulihkan</button>'
+        + '</div>';
+    }).join('');
+  };
+
+  window.pulihkanRiwayatHarga = function(indeks){
+    if(!requireLoggedIn()) return;
+    const catatan = window.riwayatHargaOwner()[Number(indeks)];
+    if(!catatan) return;
+    if(!confirm('Pulihkan paket ' + catatan.nama + ' ke keadaan sebelum '
+      + waktuRingkas(catatan.waktu) + '?')) return;
+    const data = window.getOwnerData();
+    data.gamePopuler = data.gamePopuler || {};
+    data.gamePopuler.paket = data.gamePopuler.paket || {};
+    const kunci = String(catatan.kunci);
+    if(catatan.pulihKeAda){
+      data.gamePopuler.paket[kunci] = catatan.pulihKePaket;
+    } else {
+      delete data.gamePopuler.paket[kunci];
+    }
+    saveOwnerData(data);
+    window.renderGamePopuler();
+    window.renderRiwayatHarga();
+    tampilkanPesan(catatan.nama + ' dipulihkan', false);
+  };
+
+  window.bersihkanRiwayatHarga = function(){
+    if(!requireLoggedIn()) return;
+    if(!window.riwayatHargaOwner().length) return;
+    if(!confirm('Hapus seluruh catatan perubahan harga? Paket tidak dihapus, hanya catatannya.')) return;
+    const data = window.getOwnerData();
+    if(data.gamePopuler) data.gamePopuler.riwayatHarga = [];
+    saveOwnerData(data);
+    window.renderRiwayatHarga();
+    tampilkanPesan('Catatan perubahan harga dihapus', false);
+  };
+
+  /* ============================================================
+     CADANGAN & PULIHKAN KONTEN
+     ------------------------------------------------------------
+     Menyimpan banner dan pengaturan game ke satu berkas JSON di
+     komputer owner, lalu bisa dimuat kembali. Berguna sebelum
+     mengubah banyak harga atau saat pindah perangkat. Berkas
+     ditandai aplikasi dan format supaya berkas asing ditolak.
+     ============================================================ */
+  const FORMAT_CADANGAN = 1;
+
+  window.bangunCadanganKonten = function(){
+    const data = window.getOwnerData();
+    const gp = data.gamePopuler || {};
+    const isi = {
+      aplikasi: 'ghothys-store',
+      format: FORMAT_CADANGAN,
+      waktu: new Date().toISOString(),
+      bannerUtama: Array.isArray(data.bannerUtama) ? data.bannerUtama : [],
+      gamePopuler: {
+        semuaTampil: !!gp.semuaTampil,
+        tampil: Array.isArray(gp.tampil) ? gp.tampil : [],
+        paket: (gp.paket && typeof gp.paket === 'object') ? gp.paket : {}
+      }
+    };
+    return JSON.stringify(isi, null, 2);
+  };
+
+  window.terapkanCadanganKonten = function(teks){
+    let isi;
+    try {
+      isi = JSON.parse(String(teks == null ? '' : teks));
+    } catch(e){
+      return { ok: false, pesan: 'Berkas bukan JSON yang sah.' };
+    }
+    if(!isi || typeof isi !== 'object'){
+      return { ok: false, pesan: 'Isi berkas kosong.' };
+    }
+    if(isi.aplikasi !== 'ghothys-store' || Number(isi.format) !== FORMAT_CADANGAN){
+      return { ok: false, pesan: 'Berkas ini bukan cadangan Ghothys Store.' };
+    }
+    if(!Array.isArray(isi.bannerUtama)
+      && !(isi.gamePopuler && typeof isi.gamePopuler === 'object')){
+      return { ok: false, pesan: 'Cadangan tidak memuat konten yang dikenal.' };
+    }
+    const data = window.getOwnerData();
+    if(Array.isArray(isi.bannerUtama)) data.bannerUtama = isi.bannerUtama;
+    if(isi.gamePopuler && typeof isi.gamePopuler === 'object'){
+      data.gamePopuler = data.gamePopuler || {};
+      if(typeof isi.gamePopuler.semuaTampil === 'boolean') data.gamePopuler.semuaTampil = isi.gamePopuler.semuaTampil;
+      if(Array.isArray(isi.gamePopuler.tampil)) data.gamePopuler.tampil = isi.gamePopuler.tampil;
+      if(isi.gamePopuler.paket && typeof isi.gamePopuler.paket === 'object') data.gamePopuler.paket = isi.gamePopuler.paket;
+    }
+    saveOwnerData(data);
+    if(typeof window.renderBannerUtama === 'function') window.renderBannerUtama();
+    if(typeof window.renderGamePopuler === 'function') window.renderGamePopuler();
+    if(typeof window.renderRiwayatHarga === 'function') window.renderRiwayatHarga();
+    return { ok: true, pesan: 'Cadangan diterapkan.' };
+  };
+
+  window.cadangkanKontenOwner = function(){
+    if(!requireLoggedIn()) return;
+    try {
+      const teks = window.bangunCadanganKonten();
+      const blob = new Blob([teks], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const tombol = document.createElement('a');
+      const d = new Date();
+      const cap = d.getFullYear()
+        + String(d.getMonth() + 1).padStart(2, '0')
+        + String(d.getDate()).padStart(2, '0');
+      tombol.href = url;
+      tombol.download = 'ghothys-konten-' + cap + '.json';
+      document.body.appendChild(tombol);
+      tombol.click();
+      document.body.removeChild(tombol);
+      URL.revokeObjectURL(url);
+      tampilkanPesan('Cadangan konten diunduh', false);
+    } catch(e){
+      tampilkanPesan('Gagal membuat cadangan', true);
+    }
+  };
+
+  window.pulihkanKontenOwnerDariBerkas = function(berkas){
+    if(!requireLoggedIn()) return;
+    if(!berkas) return;
+    if(!confirm('Muat cadangan ini dan ganti pengaturan konten yang sekarang?')) return;
+    const pembaca = new FileReader();
+    pembaca.onload = function(){
+      const hasil = window.terapkanCadanganKonten(pembaca.result);
+      if(hasil.ok) tampilkanPesan(hasil.pesan, false);
+      else tampilkanPesan(hasil.pesan, true);
+    };
+    pembaca.onerror = function(){ tampilkanPesan('Gagal membaca berkas', true); };
+    pembaca.readAsText(berkas);
+  };
+
+  /* ============================================================
+     RINGKASAN PESANAN
+     ------------------------------------------------------------
+     Angka diambil dari panel admin di server lewat cookie login
+     yang sudah dipakai Sinkronisasi Konten. Kalau belum login atau
+     server tak menjawab, panel hanya menampilkan keterangan, tidak
+     mengganggu fungsi lain.
+     ============================================================ */
+  function relayDasar(){
+    const c = window.GHOTHYS_NOTIFY_CONFIG || {};
+    return String(c.relayUrl || '').replace(/\/+$/, '');
+  }
+
+  function setTeks(id, teks){
+    const el = document.getElementById(id);
+    if(el) el.textContent = String(teks);
+  }
+
+  window.formatRingkasanPesanan = function(data){
+    const t = (data && data.totals) || {};
+    const s = (data && data.statusCounts) || {};
+    return {
+      hariIni: Number(t.totalOrdersToday || 0),
+      omzetHariIni: Number(t.totalRevenueToday || 0),
+      total: Number(t.totalOrders || 0),
+      pending: Number(s.Pending || 0)
+    };
+  };
+
+  window.muatRingkasanPesanan = function(){
+    const status = document.getElementById('owner-pesanan-status');
+    const dasar = relayDasar();
+    if(!dasar){
+      if(status) status.textContent = 'Alamat server belum diatur.';
+      return Promise.resolve(false);
+    }
+    if(status) status.textContent = 'Memuat ringkasan...';
+    return fetch(dasar + '/admin/dashboard', { method: 'GET', credentials: 'include' })
+      .then(function(res){
+        if(res.status === 401) return { belumLogin: true };
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function(j){
+        if(j && j.belumLogin){
+          if(status) status.textContent = 'Belum login. Masuk lewat kotak Sinkronisasi Konten di atas, lalu muat ulang.';
+          return false;
+        }
+        const isi = (j && j.data) ? j.data : j;
+        const r = window.formatRingkasanPesanan(isi);
+        setTeks('owner-pesanan-hari-ini', r.hariIni);
+        setTeks('owner-pesanan-omzet', rupiahRingkas(r.omzetHariIni));
+        setTeks('owner-pesanan-pending', r.pending);
+        setTeks('owner-pesanan-total', r.total);
+        if(status) status.textContent = 'Terakhir dimuat ' + waktuRingkas(new Date().toISOString());
+        return true;
+      })
+      .catch(function(e){
+        if(status) status.textContent = 'Gagal memuat: ' + ((e && e.message) || 'error');
+        return false;
+      });
+  };
+
   document.addEventListener('DOMContentLoaded', function(){
     const simpanBanner = document.getElementById('owner-banner-utama-simpan');
     if(simpanBanner) simpanBanner.addEventListener('click', function(){ window.simpanBannerUtama(); });
@@ -539,6 +873,38 @@
 
     const tombolTidak = document.getElementById('owner-game-tidak');
     if(tombolTidak) tombolTidak.addEventListener('click', function(){ window.setSemuaGame(false); });
+
+    const bersihkanRiwayat = document.getElementById('owner-riwayat-bersihkan');
+    if(bersihkanRiwayat) bersihkanRiwayat.addEventListener('click', function(){ window.bersihkanRiwayatHarga(); });
+
+    const wadahRiwayat = document.getElementById('owner-riwayat-harga');
+    if(wadahRiwayat && wadahRiwayat.dataset.terpasang !== '1'){
+      wadahRiwayat.dataset.terpasang = '1';
+      wadahRiwayat.addEventListener('click', function(ev){
+        const tombol = ev.target.closest('.owner-riwayat-pulihkan');
+        if(!tombol) return;
+        window.pulihkanRiwayatHarga(tombol.getAttribute('data-pulihkan'));
+      });
+    }
+
+    const unduhCadangan = document.getElementById('owner-cadangan-unduh');
+    if(unduhCadangan) unduhCadangan.addEventListener('click', function(){ window.cadangkanKontenOwner(); });
+
+    const muatCadangan = document.getElementById('owner-cadangan-berkas');
+    if(muatCadangan) muatCadangan.addEventListener('change', function(){
+      const berkas = muatCadangan.files && muatCadangan.files[0];
+      window.pulihkanKontenOwnerDariBerkas(berkas);
+      muatCadangan.value = '';
+    });
+
+    const muatPesanan = document.getElementById('owner-pesanan-muat');
+    if(muatPesanan) muatPesanan.addEventListener('click', function(){ window.muatRingkasanPesanan(); });
+
+    document.querySelectorAll('.owner-panel-open').forEach(function(btn){
+      btn.addEventListener('click', function(){ window.muatRingkasanPesanan(); });
+    });
+
+    window.renderRiwayatHarga();
 
     pasangPanelGame();
   });

@@ -99,12 +99,24 @@
     try { return window.confirm(pertanyaan) === true; } catch(e){ return false; }
   }
 
+  /* Susun pengaturan game yang dikirim ke server. Catatan perubahan
+     harga hanya untuk panel owner di browser ini, jadi tidak ikut
+     dikirim supaya muatan tetap ringkas. */
+  function gamePopulerUntukServer(gp){
+    var asal = gp || {};
+    return {
+      semuaTampil: !!asal.semuaTampil,
+      tampil: Array.isArray(asal.tampil) ? asal.tampil : [],
+      paket: (asal.paket && typeof asal.paket === 'object') ? asal.paket : {}
+    };
+  }
+
   window.syncOwnerContent = function(data){
     if(!relayUrl || !/^https:\/\//.test(relayUrl)) return { ok: true, skipped: true };
 
     var payload = {
       bannerUtama: Array.isArray(data && data.bannerUtama) ? data.bannerUtama : [],
-      gamePopuler: (data && data.gamePopuler) ? data.gamePopuler : { tampil: [], paket: {} }
+      gamePopuler: gamePopulerUntukServer(data && data.gamePopuler)
     };
 
     kirim(payload, false).then(function(r){
