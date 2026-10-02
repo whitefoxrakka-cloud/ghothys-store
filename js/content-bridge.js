@@ -13,7 +13,10 @@
         Owner: Worker membalas Set-Cookie HttpOnly (ghothys_admin,
         8 jam) di domain Worker sendiri, lalu browser mengirimkannya
         otomatis untuk semua tab. Tidak ada token di file publik.
-        Non-blocking; gagal TIDAK mengganggu panel.
+        Non-blocking; gagal TIDAK mengganggu panel. Kalau worker
+        menjawab 409 karena masih ada isi lama, panel menanyakan ke
+        owner lebih dulu. force:true hanya dikirim kalau owner
+        menyetujui penghapusan isi lama itu.
    - Pengunjung membuka toko:
         bridge ini membaca {relayUrl}/content (GET, publik, tanpa
         token) lalu memasang gambarnya ke tiga slide banner beranda
@@ -43,6 +46,59 @@
   /* ------------------------------------------------------------
      SISI OWNER -> Relay POST /content
      ------------------------------------------------------------ */
+
+  function catatStatus(status, pesan){
+    window.__ghothysSyncState = { status: status, message: pesan, at: Date.now() };
+    document.dispatchEvent(new CustomEvent('ghothys-sync', { detail: window.__ghothysSyncState }));
+  }
+
+  function laporkanSukses(){
+    lastPushWarned = false;
+    catatStatus('ok', 'Tersimpan di server');
+    if(typeof window.showToast === 'function'){
+      window.showToast('Tersimpan di server', 'Perubahan sudah terkirim dan tampil untuk pengunjung.');
+    }
+  }
+
+  /* Satu kali kirim. paksa hanya dipakai kalau owner sudah menyetujui
+     penghapusan isi lama, dan worker menghapus perintah kendali itu
+     sebelum menyimpan, jadi tidak pernah tersimpan di server. */
+  function kirim(payload, paksa){
+    var badan = {};
+    for(var k in payload){
+      if(Object.prototype.hasOwnProperty.call(payload, k)) badan[k] = payload[k];
+    }
+    if(paksa) badan.force = true;
+
+    var url = relayUrl.replace(/\/+$/,'') + '/content';
+    return fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(badan)
+    }).then(function(res){
+      return res.json().catch(function(){ return {}; }).then(function(j){
+        return { ok: res.ok, status: res.status, json: j };
+      });
+    });
+  }
+
+  /* Worker yang sedang berjalan di Cloudflare masih memakai kode lama
+     yang menghitung isi dari kunci pengumuman, acara, dan banner.
+     Kunci itu sudah tidak lagi dikirim, jadi worker lama mengira
+     payload kosong lalu menolak dengan 409 selama masih ada isi lama.
+
+     Worker lama itu sendiri menyediakan jalan keluar lewat force:true.
+     Jadi panel menanyakan dulu ke owner, dan hanya mengirim ulang dengan
+     force:true kalau owner menyetujui. Karena isi lama hilang begitu
+     disimpan, simpanan berikutnya tidak lagi ditolak. */
+  function tanyaBolehKosongkan(){
+    var pertanyaan = 'Server masih menyimpan isi lama yang sudah tidak dipakai toko ini.\n'
+      + 'Isi lama itu akan dihapus, lalu diganti Banner Utama dan Game Populer yang baru.\n\n'
+      + 'Lanjutkan?';
+    try { return window.confirm(pertanyaan) === true; } catch(e){ return false; }
+  }
+
   window.syncOwnerContent = function(data){
     if(!relayUrl || !/^https:\/\//.test(relayUrl)) return { ok: true, skipped: true };
 
@@ -51,37 +107,29 @@
       gamePopuler: (data && data.gamePopuler) ? data.gamePopuler : { tampil: [], paket: {} }
     };
 
-    var url = relayUrl.replace(/\/+$/,'') + '/content';
-    fetch(url, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    }).then(function(res){
-      return res.json().catch(function(){ return {}; }).then(function(j){
-        return { ok: res.ok, status: res.status, json: j };
-      });
-    }).then(function(r){
+    kirim(payload, false).then(function(r){
+      if(r.ok){ laporkanSukses(); return; }
+
       var perluLogin = (r.status === 401 || r.status === 403);
-      window.__ghothysSyncState = {
-        status: r.ok ? 'ok' : (perluLogin ? 'perlu-login' : 'gagal'),
-        message: r.ok ? 'Tersimpan di server' : ((r.json && r.json.error) || ('HTTP ' + r.status)),
-        at: Date.now()
-      };
-      document.dispatchEvent(new CustomEvent('ghothys-sync', { detail: window.__ghothysSyncState }));
-      if(r.ok){
-        lastPushWarned = false;
-        if(typeof window.showToast === 'function'){
-          window.showToast('Tersimpan di server', 'Perubahan sudah terkirim dan tampil untuk pengunjung.');
-        }
-        return;
-      }
+
       if(r.status === 409){
-        if(typeof window.showErrorToast === 'function'){
-          window.showErrorToast('Server menolak', r.json && r.json.error ? r.json.error : 'Payload ditolak.');
+        if(!tanyaBolehKosongkan()){
+          catatStatus('gagal', (r.json && r.json.error) || 'Server menolak payload kosong.');
+          if(typeof window.showErrorToast === 'function'){
+            window.showErrorToast('Server menolak', 'Penghapusan isi lama dibatalkan, jadi perubahan belum masuk server.');
+          }
+          return;
         }
-        return;
+        return kirim(payload, true).then(function(r2){
+          if(r2.ok){ laporkanSukses(); return; }
+          catatStatus('gagal', (r2.json && r2.json.error) || ('HTTP ' + r2.status));
+          if(typeof window.showErrorToast === 'function'){
+            window.showErrorToast('Server menolak', 'Penghapusan isi lama gagal. Periksa login di kotak Sinkronisasi Konten.');
+          }
+        });
       }
+
+      catatStatus(perluLogin ? 'perlu-login' : 'gagal', (r.json && r.json.error) || ('HTTP ' + r.status));
       if(!lastPushWarned){
         lastPushWarned = true;
         console.warn('[content-bridge] Relay /content POST gagal', r.status, r.json);
@@ -92,8 +140,7 @@
         }
       }
     }).catch(function(e){
-      window.__ghothysSyncState = { status: 'gagal', message: (e && e.message) || 'network error', at: Date.now() };
-      document.dispatchEvent(new CustomEvent('ghothys-sync', { detail: window.__ghothysSyncState }));
+      catatStatus('gagal', (e && e.message) || 'network error');
       if(!lastPushWarned){
         lastPushWarned = true;
         console.warn('[content-bridge] Relay /content POST error', e && e.message);
