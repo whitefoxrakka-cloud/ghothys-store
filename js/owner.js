@@ -337,7 +337,7 @@
       const baris = paket.map(barisPaketIsi).join('');
 
       return ''
-        + '<div class="rounded border" style="border-color:var(--border-color);break-inside:avoid;margin-bottom:0.5rem;" data-game-key="' + escapeTeks(kunci) + '">'
+        + '<div class="rounded border" style="border-color:var(--border-color);min-width:0;" data-game-key="' + escapeTeks(kunci) + '">'
         + '  <div class="flex items-center gap-2 p-2 flex-wrap">'
         + '    <label class="flex items-center gap-2 flex-1 cursor-pointer" style="min-width:180px;">'
         + '      <input type="checkbox" class="owner-game-centang" ' + (dicentang ? 'checked' : '') + ' />'
@@ -353,7 +353,7 @@
         + '      Harga ditulis angka saja, tanpa tanda rupiah dan tanpa titik. Bawaan '
         + Math.max(0, bawaan.length) + ' paket, sedang dipakai ' + paket.length + ' paket.'
         + '    </p>'
-        + '    <div class="overflow-x-auto"><table class="w-full text-xs">'
+        + '    <div class="overflow-auto" style="max-height:28rem;"><table class="w-full text-xs">'
         + '      <thead><tr style="color:var(--text-secondary);">'
         + '        <th class="p-1 text-left">Nama paket</th>'
         + '        <th class="p-1 text-left">Keterangan</th>'
