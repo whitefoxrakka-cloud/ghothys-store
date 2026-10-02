@@ -289,6 +289,13 @@
       + 'style="background:var(--bg-card);color:var(--text-primary);" /></td>';
   }
 
+  function kolomStock(nomor, nilai){
+    return '<td class="p-1"><input data-peran="stock" data-no="' + nomor + '" '
+      + 'type="number" min="-1" step="1" value="' + escapeTeks(nilai) + '" '
+      + 'class="w-full p-1 rounded text-xs" '
+      + 'style="background:var(--bg-card);color:var(--text-primary);" title="-1 = unlimited" /></td>';
+  }
+
   function tombolHapusPaket(){
     return '<td class="p-1 text-center">'
       + '<button type="button" class="owner-paket-hapus px-2 py-1 rounded text-xs text-white" '
@@ -298,7 +305,7 @@
   function barisPaketKosong(){
     return '<tr>' + kolomPaket('nama', 0, '', 'text') + kolomPaket('detail', 0, '', 'text')
       + kolomPaket('harga', 0, 0, 'number') + kolomPaket('points', 0, 0, 'number')
-      + kolomPaket('discount', 0, 0, 'number') + tombolHapusPaket() + '</tr>';
+      + kolomPaket('discount', 0, 0, 'number') + kolomStock(0, -1) + tombolHapusPaket() + '</tr>';
   }
 
   function barisPaketIsi(p, nomor){
@@ -307,6 +314,7 @@
       + kolomPaket('harga', nomor, p.price, 'number')
       + kolomPaket('points', nomor, p.points, 'number')
       + kolomPaket('discount', nomor, p.discount, 'number')
+      + kolomStock(nomor, (typeof p.stock === 'number' ? p.stock : -1))
       + tombolHapusPaket() + '</tr>';
   }
 
@@ -334,6 +342,9 @@
       const milik = konfigurasi.paket[kunci];
       const diubah = Array.isArray(milik) && milik.length > 0;
       const paket = diubah ? milik : bawaan;
+      const estimasiBawaan = g.estimasi || '5-15 menit';
+      const estimasiOwner = (konfigurasi.estimasi && konfigurasi.estimasi[kunci]) || '';
+      const estimasiTampil = estimasiOwner || estimasiBawaan;
 
       const baris = paket.map(barisPaketIsi).join('');
 
@@ -346,6 +357,9 @@
         + '      <span class="text-xs" style="color:var(--text-secondary);">' + escapeTeks(kunci) + '</span>'
         + '    </label>'
         + '    <span class="text-xs" style="color:var(--text-secondary);">' + (diubah ? 'paket hasil editan owner' : 'paket bawaan') + '</span>'
+        + '    <label class="flex items-center gap-1 text-xs" style="color:var(--text-secondary);">'
+        + '      Estimasi: <input type="text" class="owner-game-estimasi px-1 py-0.5 rounded text-xs" style="background:var(--bg-card);color:var(--text-primary);width:100px;" value="' + escapeTeks(estimasiTampil) + '" data-bawaan="' + escapeTeks(estimasiBawaan) + '" />'
+        + '    </label>'
         + '    <button type="button" class="owner-game-simpan px-3 py-1 rounded text-xs text-white" style="background:#4f46e5;">Simpan</button>'
         + '    <button type="button" class="owner-game-kembalikan px-3 py-1 rounded text-xs" style="background:var(--bg-card);color:var(--text-primary);">Kembalikan</button>'
         + '  </div>'
@@ -361,6 +375,7 @@
         + '        <th class="p-1 text-left">Harga</th>'
         + '        <th class="p-1 text-left">Jumlah diamond</th>'
         + '        <th class="p-1 text-left">Diskon persen</th>'
+        + '        <th class="p-1 text-left">Stok</th>'
         + '        <th class="p-1"></th>'
         + '      </tr></thead>'
         + '      <tbody>' + baris + '</tbody>'
@@ -385,12 +400,14 @@
       const harga  = parseInt(ambil('harga').replace(/\D/g, ''), 10);
       const poin   = parseInt(ambil('points').replace(/\D/g, ''), 10);
       const diskon = parseInt(ambil('discount').replace(/\D/g, ''), 10);
+      const stok   = parseInt(ambil('stock').replace(/\D/g, ''), 10);
       hasil.push({
         name: nama,
         detail: ambil('detail'),
         price: isFinite(harga) ? harga : 0,
         points: isFinite(poin) ? poin : 0,
-        discount: isFinite(diskon) ? diskon : 0
+        discount: isFinite(diskon) ? diskon : 0,
+        stock: isFinite(stok) ? stok : -1
       });
     });
     return hasil;
@@ -424,9 +441,13 @@
         + 'Harga ikut tersimpan dan langsung dilihat pembeli. Lanjutkan?';
       if(!confirm(pesan)) return;
     }
+    /* Baca estimasi dari input di header game */
+    const inpEst = baris.querySelector('.owner-game-estimasi');
+    const estimasiBaru = inpEst ? inpEst.value.trim() : '';
     const data = window.getOwnerData();
     data.gamePopuler = data.gamePopuler || {};
     data.gamePopuler.paket = data.gamePopuler.paket || {};
+    data.gamePopuler.estimasi = data.gamePopuler.estimasi || {};
     const kunciSimpan = String(kunci);
     const tersimpanSebelum = data.gamePopuler.paket[kunciSimpan];
     const adaSebelum = Array.isArray(tersimpanSebelum) && tersimpanSebelum.length > 0;
@@ -444,6 +465,8 @@
       });
     }
     data.gamePopuler.paket[kunciSimpan] = paket;
+    if(estimasiBaru) data.gamePopuler.estimasi[kunciSimpan] = estimasiBaru;
+    else delete data.gamePopuler.estimasi[kunciSimpan];
     saveOwnerData(data);
     window.renderGamePopuler();
     window.renderRiwayatHarga();
