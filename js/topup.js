@@ -656,7 +656,8 @@
         statusId: 'pay-bukti-status',
         previewId: 'pay-bukti-preview',
         gambarId: 'pay-bukti-img',
-        orderId: info.orderId
+        orderId: info.orderId,
+        uid: info.uid
       });
     }
 

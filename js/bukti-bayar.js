@@ -6,13 +6,13 @@
      - kartu Cek Status Pesanan (order-status.js)
 
    Mengirim gambar ke {relayUrl}/bukti-bayar sebagai
-   multipart/form-data berisi order_id dan file, lalu menampilkan
+   multipart/form-data berisi order_id, uid, dan file, lalu menampilkan
    pratinjau lokal dari berkas yang baru dipilih. Gambar di server
    hanya bisa dibuka admin (GET /bukti-bayar wajib sesi admin),
    karena Order ID berurutan dan mudah ditebak orang lain.
 
-   Tidak ada secret di sini. Server yang memvalidasi Order ID,
-   jenis gambar, ukuran, dan membatasi jumlah unggahan per IP.
+   Tidak ada secret di sini. Server yang memvalidasi Order ID + UID
+   (faktor kedua), jenis gambar, ukuran, dan membatasi unggahan per IP.
    ============================================================ */
 (function(){
   'use strict';
@@ -37,18 +37,20 @@
     return t === 'image/jpeg' || t === 'image/png' || t === 'image/webp';
   }
 
-  function kirim(orderId, file){
+  function kirim(orderId, file, uid){
     return new Promise(function(resolve){
       var base = relayUrl();
       if(!base){ resolve({ ok: false, error: 'Layanan belum dikonfigurasi' }); return; }
       var id = String(orderId || '').trim();
       if(!/^INV-\d{8}-\d+$/.test(id)){ resolve({ ok: false, error: 'Order ID tidak valid' }); return; }
+      var uidBersih = String(uid == null ? '' : uid).trim();
       if(!file){ resolve({ ok: false, error: 'Pilih gambar bukti dulu' }); return; }
       if(!tipeDiterima(file)){ resolve({ ok: false, error: 'Format gambar harus JPG, PNG, atau WebP' }); return; }
       if(file.size > MAKS_BYTES){ resolve({ ok: false, error: 'Ukuran gambar maksimal 3 MB' }); return; }
 
       var body = new FormData();
       body.append('order_id', id);
+      if(uidBersih) body.append('uid', uidBersih);
       body.append('file', file, file.name || 'bukti.jpg');
 
       fetch(base + '/bukti-bayar', { method: 'POST', body: body })
@@ -110,7 +112,7 @@
       tombol.disabled = true;
       tombol.textContent = 'Mengunggah...';
       setStatus('Sedang mengunggah...', '');
-      kirim(o.orderId, file).then(function(hasil){
+      kirim(o.orderId, file, o.uid).then(function(hasil){
         tombol.disabled = false;
         tombol.textContent = teksAsli;
         if(hasil.ok){

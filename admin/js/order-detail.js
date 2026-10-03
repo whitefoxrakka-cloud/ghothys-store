@@ -234,5 +234,38 @@
     if(btnCancel){
       btnCancel.addEventListener('click', ()=> handleTransition('Cancel', btnCancel));
     }
+
+    const btnDelete = document.getElementById('btn-delete');
+    if(btnDelete){
+      btnDelete.addEventListener('click', async ()=>{
+        if(!order) return;
+        const recId = order.id || '';
+        const orderId = order.order_id || order.orderId || '';
+        if(!recId){
+          window.showErrorToast('Gagal hapus', 'ID record order tidak ada');
+          return;
+        }
+        const yakin = window.confirm('Hapus order ' + orderId + ' secara permanen?\n\nBaris ini akan dihapus dari Airtable beserta bukti bayarnya. Tindakan ini tidak bisa dibatalkan.');
+        if(!yakin) return;
+        const teksAsli = btnDelete.textContent;
+        try{
+          btnDelete.disabled = true;
+          btnDelete.textContent = 'Menghapus...';
+          await window.AdminAPI.adminFetch('/admin/orders/' + encodeURIComponent(recId) + '?order_id=' + encodeURIComponent(orderId), { method:'DELETE' });
+          window.showToast('✅ Hapus Order', 'Order ' + orderId + ' sudah dihapus');
+          window.location.href = './orders.html';
+        }catch(err){
+          const st = err && err.status ? err.status : null;
+          if(st === 401 || st === 403){
+            window.AdminAPI.clearToken();
+            window.location.href = './login.html';
+            return;
+          }
+          window.showErrorToast('Gagal menghapus order', err.message || 'Terjadi kesalahan');
+          btnDelete.disabled = false;
+          btnDelete.textContent = teksAsli;
+        }
+      });
+    }
   });
 })();

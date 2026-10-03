@@ -69,9 +69,14 @@
         <button type="button" class="adm-btn adm-btn-danger" id="btn-cancel">Batalkan</button>
       </div>
 
+      <div class="adm-actions" style="margin-top:10px;">
+        <button type="button" class="adm-btn adm-btn-danger" id="btn-delete">Hapus Order Permanen</button>
+      </div>
+
       <p class="adm-note" style="margin-top:14px;">
         Status yang dipilih langsung tersimpan di Airtable dan pembeli bisa melihatnya di halaman cek status.
         Tombol dinonaktifkan otomatis untuk status Success atau Cancel.
+        Hapus Order menghapus baris ini dari Airtable beserta bukti bayarnya dan tidak bisa dibatalkan.
       </p>
     </div>
 
@@ -87,6 +92,6 @@
   </div>
 
   <script src="js/admin-api.js?v=20260925d"></script>
-  <script src="js/order-detail.js?v=20261003e"></script>
+  <script src="js/order-detail.js?v=20261003f"></script>
 </body>
 </html>

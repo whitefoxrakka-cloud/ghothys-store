@@ -6,9 +6,10 @@
    Dibatalkan/Refund) + ringkasan order.
 
    Alur:
-   1) Form publik "Cek Status Pesanan" (Order ID + tombol Cek).
-   2) GET {relayUrl}/order-status?order_id=INV-...  -> PUBLIK,
-      tanpa secret. Relay baca status dari tabel Airtable
+   1) Form publik "Cek Status Pesanan" (Order ID + User ID + tombol Cek).
+   2) GET {relayUrl}/order-status?order_id=INV-...&uid=...  -> PUBLIK,
+      tapi wajib faktor kedua (UID harus cocok). Relay baca status dari
+      tabel Airtable
       "Orders" (baris/kolom Status yang ditulis saat order
       dibuat, di-update owner di Airtable/panel owner).
    3) Parse { ok, found, order:{ orderId, game, uid, server,
@@ -18,9 +19,11 @@
 
    Keamanan (mengikuti aturan site):
    - TANPA secret, TANPA localStorage admin. Form ini murni
-     publik (Order ID milik customer sendiri). Hash/validasi
-     Order ID minimal (INV-XXXXXXXX-XXXX) biar nggak ngirim
-     string sembarang ke relay.
+     publik (Order ID + UID milik customer sendiri). Order ID
+     berurutan, jadi UID jadi faktor kedua supaya data pembeli
+     lain tidak bisa dipanen hanya dengan menebak Order ID.
+     Keduanya divalidasi ringan biar nggak ngirim string
+     sembarang ke relay.
    - Kalau fetch gagal (relay down / CORS / 500) -> tampilkan
      pesan fallback, jangan kirim ulang berulang.
    ============================================================ */
@@ -36,6 +39,10 @@
 
 	function normalizeOrderId(raw) {
 		return (raw || '').replace(/^https?:\/\/[^/]+\//, '').trim();
+	}
+
+	function normUidKlien(x) {
+		return String(x == null ? '' : x).trim().toLowerCase().replace(/\s+/g, '');
 	}
 
 	function isValidOrderId(value) {
@@ -149,6 +156,7 @@
 			previewId: 'os-bukti-preview',
 			gambarId: 'os-bukti-img',
 			orderId: order && order.orderId,
+			uid: order && order.uid,
 			tampilkanAwal: !!(order && order.buktiBayar)
 		});
 	}
@@ -158,11 +166,12 @@
 			'<div class="os-container">',
 			'<div class="os-heading">',
 			'<h2>Cek Status Pesanan</h2>',
-			'<p>Masukkan Order ID kamu (contoh: <code>INV-26012026-0001</code>) untuk melihat status pesanan.</p>',
+			'<p>Masukkan Order ID dan User ID (UID) kamu (contoh: <code>INV-26012026-0001</code>) untuk melihat status pesanan.</p>',
 			'</div>',
 			'<form class="os-form" id="order-status-form" novalidate>',
 			'<div class="os-form-row">',
 			'<input type="text" id="order-status-input" class="os-input" placeholder="Order ID (INV-...)" inputmode="text" autocomplete="off" maxlength="32" required>',
+			'<input type="text" id="order-status-uid" class="os-input" placeholder="User ID (UID)" inputmode="numeric" autocomplete="off" maxlength="32" required>',
 			'<button type="submit" class="os-btn" id="order-status-btn">Cek Status</button>',
 			'</div>',
 			'<div class="os-hint" id="order-status-hint"></div>',
@@ -215,6 +224,7 @@
 
 	var REFRESH_SECONDS = 30;
 	var activeOrderId = '';
+	var activeUid = '';
 	var autoRefreshOn = true;
 	var secondsLeft = REFRESH_SECONDS;
 	var refreshTimer = null;
@@ -268,14 +278,15 @@
 	}
 
 	async function runAutoRefresh() {
-		if (!activeOrderId) return;
-		await cekStatusOrder(activeOrderId, true);
+		if (!activeOrderId || !activeUid) return;
+		await cekStatusOrder(activeOrderId, activeUid, true);
 	}
 
-	function setActiveOrder(orderId) {
+	function setActiveOrder(orderId, uid) {
 		var nextId = orderId || '';
 		if (nextId !== activeOrderId) notifiedStatus = '';
 		activeOrderId = nextId;
+		activeUid = nextId ? String(uid == null ? '' : uid).trim() : '';
 		if (activeOrderId) {
 			startAutoRefresh();
 		} else {
@@ -285,8 +296,9 @@
 		}
 	}
 
-	async function cekStatusOrder(orderIdRaw, silent) {
+	async function cekStatusOrder(orderIdRaw, uidRaw, silent) {
 		var orderId = normalizeOrderId(orderIdRaw);
+		var uid = String(uidRaw == null ? '' : uidRaw).trim();
 		loadRelayConfig();
 
 		if (!RELAY_URL) {
@@ -310,6 +322,11 @@
 			showHint('Format Order ID tidak valid. Contoh: INV-26012026-0001', true);
 			return;
 		}
+		if (!normUidKlien(uid)) {
+			setActiveOrder('');
+			showHint('Masukkan User ID (UID) dulu.', true);
+			return;
+		}
 
 		setBusy(true);
 		if (!silent) showHint('');
@@ -317,7 +334,7 @@
 			renderResult('<div class="os-empty"><div class="os-empty-title">Mengecek status pesanan\u2026</div></div>');
 		}
 
-		var url = RELAY_URL + '/order-status?order_id=' + encodeURIComponent(orderId);
+		var url = RELAY_URL + '/order-status?order_id=' + encodeURIComponent(orderId) + '&uid=' + encodeURIComponent(uid);
 		try {
 			var res = await fetch(urlTransfer(url));
 			var data = await res.json().catch(function () { return null; });
@@ -332,12 +349,12 @@
 				renderResult([
 					'<div class="os-empty">',
 					'<div class="os-empty-title">Order tidak ditemukan.</div>',
-					'<div class="os-empty-sub">Periksa kembali Order ID kamu, atau hubungi CS kalau yakin sudah benar.</div>',
+					'<div class="os-empty-sub">Periksa kembali Order ID dan User ID (UID) kamu, atau hubungi CS kalau yakin sudah benar.</div>',
 					'</div>'
 				].join(''));
 				return;
 			}
-			setActiveOrder(orderId);
+			setActiveOrder(orderId, uid);
 			var nextStatus = String((data.order && data.order.status) || '');
 			if (silent && nextStatus && nextStatus === lastRenderedStatus) {
 				secondsLeft = REFRESH_SECONDS;
@@ -386,10 +403,11 @@
 	function bindForm() {
 		var form = document.getElementById('order-status-form');
 		var input = document.getElementById('order-status-input');
+		var uidInput = document.getElementById('order-status-uid');
 		if (!form || !input) return;
 		form.addEventListener('submit', function (e) {
 			e.preventDefault();
-			cekStatusOrder(input.value, false);
+			cekStatusOrder(input.value, uidInput ? uidInput.value : '', false);
 		});
 
 		input.addEventListener('input', function () {
@@ -397,6 +415,14 @@
 				setActiveOrder('');
 			}
 		});
+
+		if (uidInput) {
+			uidInput.addEventListener('input', function () {
+				if (String(uidInput.value || '').trim() !== activeUid) {
+					setActiveOrder('');
+				}
+			});
+		}
 
 		var nowBtn = document.getElementById('os-refresh-now');
 		if (nowBtn) {
