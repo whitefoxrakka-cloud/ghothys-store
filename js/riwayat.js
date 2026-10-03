@@ -333,8 +333,9 @@
 
 		for (var i = 0; i < target.length; i++) {
 			var id = target[i].id;
+			var uidSinkron = String(target[i].uid == null ? '' : target[i].uid).trim();
 			try {
-				var res = await fetch(base + '/order-status?order_id=' + encodeURIComponent(id));
+				var res = await fetch(base + '/order-status?order_id=' + encodeURIComponent(id) + '&uid=' + encodeURIComponent(uidSinkron));
 				var data = await res.json().catch(function () { return null; });
 				if (data && data.ok === true && data.skipped) {
 					/* Relay hidup tapi Airtable belum dikonfigurasi. */
@@ -393,10 +394,18 @@
 	}
 
 	function bukaDiStatus(id) {
+		var daftar = semuaOrder();
+		var pesanan = null;
+		for (var i = 0; i < daftar.length; i++) {
+			if (daftar[i] && daftar[i].id === id) { pesanan = daftar[i]; break; }
+		}
+		var uid = (pesanan && pesanan.uid) ? String(pesanan.uid) : '';
 		var kolom = document.getElementById('order-status-input');
 		if (kolom) kolom.value = id;
+		var kolomUid = document.getElementById('order-status-uid');
+		if (kolomUid) kolomUid.value = uid;
 		if (typeof window.cekStatusOrder === 'function') {
-			window.cekStatusOrder(id, false);
+			window.cekStatusOrder(id, uid, false);
 		}
 		var bagian = document.getElementById('order-status-section');
 		if (bagian) bagian.scrollIntoView({ behavior: 'smooth', block: 'center' });
