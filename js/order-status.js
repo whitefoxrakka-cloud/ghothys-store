@@ -113,6 +113,16 @@
 		var wa = tautanWhatsApp(order);
 		/* Pembayaran Points tidak lewat transfer, jadi tidak perlu unggah bukti. */
 		var pakaiPoints = String(order.payment || '').toLowerCase().indexOf('points') !== -1;
+		/* Tombol bayar online (Midtrans) hanya untuk pesanan yang masih
+		   menunggu pembayaran dan bukan Points. Server menandai
+		   onlineBayar; ketersediaan Snap dicek juga di sisi halaman. */
+		var bolehOnline = !pakaiPoints
+			&& /pending/i.test(String(order.status || ''))
+			&& order.onlineBayar === true
+			&& window.MidtransBayar && window.MidtransBayar.tersedia();
+		var onlineHtml = bolehOnline
+			? '<button type="button" id="os-bayar-online" style="width:100%;margin-top:10px;padding:12px;border-radius:10px;border:none;background:#6d28d9;color:#fff;font-weight:700;cursor:pointer;">Bayar Online (QRIS / E-Wallet)</button>'
+			: '';
 		var buktiHtml = pakaiPoints ? '' : [
 			'<div id="os-bukti" class="os-bukti">',
 			'<div class="os-bukti-title">Bukti Pembayaran</div>',
@@ -141,6 +151,7 @@
 			'</div>',
 			'<div class="os-note">Simpan Order ID ini. Hubungi CS Ghothys Store kalau butuh bantuan.</div>',
 			wa ? ('<a class="os-wa-btn" href="' + escapeHtml(wa) + '" target="_blank" rel="noopener noreferrer">Chat WhatsApp</a>') : '',
+			onlineHtml,
 			buktiHtml,
 			'</div>'
 		].join('');
@@ -159,6 +170,30 @@
 			uid: order && order.uid,
 			tampilkanAwal: !!(order && order.buktiBayar)
 		});
+
+		/* Tombol bayar online di kartu status (kalau ada). */
+		var btnOnline = document.getElementById('os-bayar-online');
+		if (btnOnline && order && window.MidtransBayar && typeof window.MidtransBayar.bayar === 'function') {
+			btnOnline.addEventListener('click', function () {
+				btnOnline.disabled = true;
+				btnOnline.textContent = 'Menyiapkan...';
+				window.MidtransBayar.bayar(order.orderId, order.uid, {
+					onSuccess: function () {
+						if (window.showToast) window.showToast('Pembayaran Berhasil', 'Status pesanan diperbarui otomatis.');
+						cekStatusOrder(order.orderId, order.uid, false);
+					},
+					onPending: function () {
+						if (window.showToast) window.showToast('Menunggu Pembayaran', 'Selesaikan pembayaran lalu cek status lagi.');
+						cekStatusOrder(order.orderId, order.uid, false);
+					}
+				}).catch(function (e) {
+					if (window.showErrorToast) window.showErrorToast('Pembayaran Gagal', (e && e.message) || 'Coba lagi.');
+				}).then(function () {
+					var b = document.getElementById('os-bayar-online');
+					if (b) { b.disabled = false; b.textContent = 'Bayar Online (QRIS / E-Wallet)'; }
+				});
+			});
+		}
 	}
 
 	function renderFormHtml(innerHtml) {

@@ -432,6 +432,20 @@
           promoCatatan: voucherDipakai ? voucherDipakai.catatan : ''
         });
 
+        // Pembayaran online otomatis (Midtrans). Kalau aktif, kotak
+        // "Bayar Online" disisipkan di atas instruksi transfer manual.
+        // Alur manual tetap tersedia sebagai cadangan.
+        if (window.MidtransBayar && typeof window.MidtransBayar.sisipkanTombolBayar === 'function'
+            && window.MidtransBayar.tersedia()) {
+          window.MidtransBayar.sisipkanTombolBayar({
+            orderId: orderId,
+            uid: userId,
+            onSukses: function(){
+              if(window.showToast) window.showToast('Pembayaran Berhasil', 'Status pesanan diperbarui otomatis.');
+            }
+          });
+        }
+
         window.updateUI();
         return;
       }
