@@ -179,6 +179,30 @@
       'Pesanan Dibuat!': 'Order Created!',
       'Selesai!': 'Done!',
 
+      // Bukti bayar dan kode unik
+      'Kode Unik': 'Unique Code',
+      'Kode Unik Pembayaran': 'Unique Payment Code',
+      'Unggah Bukti Pembayaran': 'Upload Payment Proof',
+      'Pilih foto atau screenshot bukti transfer (JPG, PNG, atau WebP, maksimal 3 MB), lalu tekan Kirim Bukti. Boleh juga dikirim lewat WhatsApp.':
+        'Pick a photo or screenshot of the transfer receipt (JPG, PNG, or WebP, up to 3 MB), then press Send Proof. You can also send it on WhatsApp.',
+      'Kirim Bukti': 'Send Proof',
+      'Bukti Pembayaran': 'Payment Proof',
+      'Lihat bukti': 'View proof',
+      'Bukti sudah diunggah. Kirim ulang kalau ada yang baru.':
+        'Proof uploaded. Send again if there is a new one.',
+      'Belum ada bukti. Unggah foto atau screenshot transfer (JPG, PNG, atau WebP, maksimal 3 MB).':
+        'No proof yet. Upload a photo or screenshot of the transfer (JPG, PNG, or WebP, up to 3 MB).',
+      'Pilih gambar bukti dulu.': 'Pick a proof image first.',
+      'Mengunggah...': 'Uploading...',
+      'Sedang mengunggah...': 'Uploading...',
+      'Bukti pembayaran sudah diunggah. Terima kasih.':
+        'Payment proof uploaded. Thank you.',
+      'Gagal mengunggah bukti.': 'Failed to upload proof.',
+      'Layanan belum dikonfigurasi': 'Service not configured',
+      'Order ID tidak valid': 'Invalid Order ID',
+      'Format gambar harus JPG, PNG, atau WebP': 'Image format must be JPG, PNG, or WebP',
+      'Ukuran gambar maksimal 3 MB': 'Maximum image size is 3 MB',
+
       // Notifikasi
       'Notifikasi langsung': 'Direct notifications',
       'Notifikasi transaksi via email': 'Order notifications by email',
