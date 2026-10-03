@@ -139,6 +139,8 @@
       'Tampilkan semua': 'Show all',
       'Sembunyikan semua': 'Hide all',
       'Kembalikan': 'Return',
+      'Kembalikan ke kode bawaan': 'Return to default codes',
+      'Daftar Kode Owner': 'Owner Code List',
       'Tambah paket': 'Add package',
       'hapus': 'delete',
       'Nama paket': 'Package name',

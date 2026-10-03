@@ -5,6 +5,12 @@
    kode bawaan; kode yang didaftarkan disimpan di localStorage
    dan menimpa kode bawaan dengan nama yang sama.
 
+   Pemilik toko bisa menetapkan daftar kode resmi dari Owner Panel.
+   Daftar itu dikirim lewat content-bridge.js dan dipasang ke modul
+   ini dengan setServerPromo(). Kalau daftar owner ada, daftar itulah
+   yang dipakai dan kode bawaan tidak ikut; kalau belum ada, kode
+   bawaan tetap dipakai.
+
    Bentuk kode yang didukung:
      - persen  : memotong sejumlah persen dari subtotal
      - nominal : memotong sejumlah rupiah
@@ -136,9 +142,48 @@
   }
 
   /* ============================================================
-     DAFTAR GABUNGAN: BAWAAN + YANG DIDAFTARKAN
-     Kode terdaftar dengan nama yang sama menimpa kode bawaan.
+     DAFTAR GABUNGAN: KODE OWNER + YANG DIDAFTARKAN + BAWAAN
+     Kode terdaftar (localStorage) selalu menang. Kode yang ditetapkan
+     owner dari panel menimpa kode bawaan, dan kalau daftar owner ada,
+     kode bawaan tidak ikut dipakai.
      ============================================================ */
+
+  /* null = owner belum menetapkan daftar, jadi kode bawaan dipakai.
+     Array (boleh kosong) = daftar owner yang berlaku. */
+  let daftarServer = null;
+
+  /* Dipakai content-bridge.js saat konten dari server masuk. Daftar
+     disalin dan dirapikan, jadi perubahan dari luar tidak merusak
+     penyimpanan di dalam modul. */
+  function setServerPromo(daftarBaru) {
+    if (!Array.isArray(daftarBaru)) {
+      daftarServer = null;
+    } else {
+      const bersih = [];
+      for (let i = 0; i < daftarBaru.length; i++) {
+        const p = daftarBaru[i];
+        if (!bentukSah(p)) continue;
+        const salinan = salin(p);
+        salinan.kode = kunci(salinan.kode);
+        salinan.catatan = String(salinan.catatan || '').trim();
+        if (salinan.tipe === 'persen') {
+          salinan.nilai = Math.min(angka(salinan.nilai), BATAS_PERSEN);
+        } else {
+          salinan.nilai = Math.max(0, Math.floor(angka(salinan.nilai)));
+        }
+        bersih.push(salinan);
+      }
+      daftarServer = bersih;
+    }
+
+    /* Kode yang sedang dipakai bisa saja hilang dari daftar baru. */
+    if (aktif && !cari(aktif.kode)) aktif = null;
+
+    /* Segarkan kotak promo kalau sudah tampil di halaman. */
+    if (typeof document !== 'undefined' && document.getElementById) {
+      gambarDaftar(document.getElementById('promo-box'), document.getElementById('promo-input'));
+    }
+  }
 
   function daftar() {
     const gabungan = [];
@@ -151,10 +196,12 @@
       sudahAda[nama] = true;
     }
 
-    for (let i = 0; i < BAWAAN.length; i++) {
-      const nama = kunci(BAWAAN[i].kode);
+    const dasar = Array.isArray(daftarServer) ? daftarServer : BAWAAN;
+    for (let i = 0; i < dasar.length; i++) {
+      const nama = kunci(dasar[i].kode);
       if (sudahAda[nama]) continue;
-      gabungan.push(salin(BAWAAN[i]));
+      gabungan.push(salin(dasar[i]));
+      sudahAda[nama] = true;
     }
 
     return gabungan;
@@ -530,6 +577,7 @@
     daftarkan: daftarkan,
     hapus: hapus,
     kosongkan: kosongkan,
+    setServerPromo: setServerPromo,
     ambilAktif: ambilAktif,
     terapkanDanSimpan: terapkanDanSimpan,
     lepasAktif: lepasAktif,

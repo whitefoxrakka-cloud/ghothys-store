@@ -40,7 +40,8 @@
 
   /* Kosong berarti panel belum pernah diisi owner di browser ini.
      Yang dihitung hanya isi yang benar-benar dipakai pengunjung:
-     gambar banner yang dipasang dan game yang dipilih. */
+     gambar banner yang dipasang, game yang dipilih, dan kode promo
+     yang ditetapkan owner. */
   function isiLokalKosong(){
     const data = window.getOwnerData() || {};
     const banner = Array.isArray(data.bannerUtama) ? data.bannerUtama : [];
@@ -48,7 +49,8 @@
     const adaBanner = banner.some(s => String((s && s.url) || '').trim() !== '');
     const adaTampil = Array.isArray(game.tampil) ? game.tampil.length : 0;
     const adaPaket  = Object.keys(game.paket || {}).length;
-    return !adaBanner && !adaTampil && !adaPaket;
+    const adaPromo  = Array.isArray(data.promo) ? data.promo.length : 0;
+    return !adaBanner && !adaTampil && !adaPaket && !adaPromo;
   }
 
   window.sinkronkanKontenOwner = function(){
@@ -64,11 +66,12 @@
         const isi = (body && body.ok !== false) ? body.content : null;
         if(!isi) return null;
 
-        /* Yang dipakai pengunjung cuma banner utama dan daftar game,
-           jadi hanya dua itu yang diambil dari server. */
+        /* Yang dipakai pengunjung cuma banner utama, daftar game, dan
+           daftar kode promo, jadi hanya itu yang diambil dari server. */
         const ada = (Array.isArray(isi.bannerUtama) && isi.bannerUtama.length > 0)
                  || (isi.gamePopuler && typeof isi.gamePopuler === 'object'
-                     && Object.keys(isi.gamePopuler).length > 0);
+                     && Object.keys(isi.gamePopuler).length > 0)
+                 || (Array.isArray(isi.promo) && isi.promo.length > 0);
         if(!ada) return null;
 
         /* Bentuk datanya sama persis dengan bentuk yang dipakai
@@ -79,6 +82,7 @@
         if(isi.gamePopuler && typeof isi.gamePopuler === 'object'){
           data.gamePopuler = isi.gamePopuler;
         }
+        if(Array.isArray(isi.promo)) data.promo = isi.promo;
 
         localStorage.setItem(window.STORAGE_KEYS.OWNER_PANEL, JSON.stringify(data));
         return data;
@@ -99,9 +103,11 @@
         if(typeof window.renderOwnerDashboard === 'function') window.renderOwnerDashboard();
         if(typeof window.renderBannerUtama === 'function') window.renderBannerUtama();
         if(typeof window.renderGamePopuler === 'function') window.renderGamePopuler();
+        if(typeof window.renderPromoOwner === 'function') window.renderPromoOwner();
       });
     }
     if(typeof window.renderOwnerDashboard === 'function') window.renderOwnerDashboard();
+    if(typeof window.renderPromoOwner === 'function') window.renderPromoOwner();
   };
 
   window.closeOwnerPanel = function(){
@@ -726,6 +732,188 @@
   };
 
   /* ============================================================
+     KELOLA PROMO
+     ------------------------------------------------------------
+     Owner menetapkan kode promo resmi toko. Daftar ini ikut dikirim
+     ke server lewat content-bridge.js (bersama banner dan game) dan
+     dipakai pengunjung. Selama owner belum menetapkan daftar, kode
+     bawaan di js/promo.js tetap dipakai. Mengosongkan daftar lewat
+     hapus satu per satu berarti toko tidak memberi promo sama sekali;
+     tombol "Kembalikan ke kode bawaan" yang menghapus daftar owner.
+     ============================================================ */
+
+  window.promoOwner = function(){
+    const data = window.getOwnerData();
+    return Array.isArray(data.promo) ? data.promo : [];
+  };
+
+  window.openPromoManager = function(){
+    if(!requireLoggedIn()) return;
+    const section = document.getElementById('owner-promo-section');
+    if(section) section.style.display = 'block';
+    window.renderPromoOwner();
+  };
+
+  window.closePromoManager = function(){
+    const section = document.getElementById('owner-promo-section');
+    if(section) section.style.display = 'none';
+  };
+
+  function kosongkanFormPromo(){
+    const set = function(id, nilai){ const el = document.getElementById(id); if(el) el.value = nilai; };
+    set('owner-promo-kode', '');
+    set('owner-promo-nilai', '');
+    set('owner-promo-catatan', '');
+    set('owner-promo-berlaku', '');
+    const tipe = document.getElementById('owner-promo-tipe');
+    if(tipe) tipe.value = 'persen';
+    const points = document.getElementById('owner-promo-points');
+    if(points) points.checked = false;
+    const aktif = document.getElementById('owner-promo-aktif');
+    if(aktif) aktif.checked = true;
+    const label = document.getElementById('owner-promo-simpan');
+    if(label) label.textContent = 'Tambah Kode';
+  }
+
+  /* Pasang daftar promo owner ke halaman yang sedang dibuka di
+     browser ini, supaya owner langsung bisa mencoba kodenya. */
+  function terapkanPromoKeHalaman(data){
+    if(window.Promo && typeof window.Promo.setServerPromo === 'function'){
+      window.Promo.setServerPromo(Array.isArray(data.promo) ? data.promo : null);
+    }
+  }
+
+  window.ubahPromoOwner = function(kode){
+    if(!requireLoggedIn()) return;
+    const nama = String(kode || '').toUpperCase();
+    const p = window.promoOwner().filter(function(x){
+      return String(x.kode).toUpperCase() === nama;
+    })[0];
+    if(!p) return;
+    const set = function(id, nilai){ const el = document.getElementById(id); if(el) el.value = nilai; };
+    set('owner-promo-kode', String(p.kode).toUpperCase());
+    set('owner-promo-nilai', String(p.nilai));
+    set('owner-promo-catatan', p.catatan || '');
+    set('owner-promo-berlaku', p.berlaku || '');
+    const tipe = document.getElementById('owner-promo-tipe');
+    if(tipe) tipe.value = p.tipe;
+    const points = document.getElementById('owner-promo-points');
+    if(points) points.checked = !!p.khususPoints;
+    const aktif = document.getElementById('owner-promo-aktif');
+    if(aktif) aktif.checked = (p.aktif !== false);
+    const label = document.getElementById('owner-promo-simpan');
+    if(label) label.textContent = 'Perbarui Kode';
+    const section = document.getElementById('owner-promo-section');
+    if(section) section.style.display = 'block';
+  };
+
+  window.simpanPromoOwner = function(){
+    if(!requireLoggedIn()) return;
+    const ambil = function(id){ const el = document.getElementById(id); return el ? String(el.value || '') : ''; };
+    const kode = ambil('owner-promo-kode').trim().toUpperCase();
+    const tipeEl = document.getElementById('owner-promo-tipe');
+    const tipe = tipeEl ? tipeEl.value : '';
+    const nilai = parseInt(ambil('owner-promo-nilai').replace(/\D/g, ''), 10);
+    const catatan = ambil('owner-promo-catatan').trim();
+    const berlaku = ambil('owner-promo-berlaku').trim();
+    const points = document.getElementById('owner-promo-points');
+    const khususPoints = !!(points && points.checked);
+    const aktifEl = document.getElementById('owner-promo-aktif');
+    const aktif = aktifEl ? !!aktifEl.checked : true;
+
+    if(!kode){ tampilkanPesan('Kode promo belum diisi', true); return; }
+    if(tipe !== 'persen' && tipe !== 'nominal'){
+      tampilkanPesan('Tipe promo harus persen atau nominal', true); return;
+    }
+    if(!isFinite(nilai) || nilai <= 0){
+      tampilkanPesan('Nilai promo harus angka di atas nol', true); return;
+    }
+    if(berlaku && !/^\d{4}-\d{2}-\d{2}$/.test(berlaku)){
+      tampilkanPesan('Tanggal berlaku harus format TAHUN-BULAN-HARI', true); return;
+    }
+
+    const baru = { kode: kode, tipe: tipe, nilai: nilai, catatan: catatan };
+    if(berlaku) baru.berlaku = berlaku;
+    if(khususPoints) baru.khususPoints = true;
+    if(!aktif) baru.aktif = false;
+
+    const data = window.getOwnerData();
+    const daftar = Array.isArray(data.promo) ? data.promo.slice() : [];
+    let diganti = false;
+    for(let i = 0; i < daftar.length; i++){
+      if(String(daftar[i].kode).toUpperCase() === kode){ daftar[i] = baru; diganti = true; break; }
+    }
+    if(!diganti) daftar.push(baru);
+    data.promo = daftar;
+    saveOwnerData(data);
+    terapkanPromoKeHalaman(data);
+    window.renderPromoOwner();
+    kosongkanFormPromo();
+    tampilkanPesan('Kode promo ' + kode + (diganti ? ' diperbarui' : ' ditambahkan'), false);
+  };
+
+  window.hapusPromoOwner = function(kode){
+    if(!requireLoggedIn()) return;
+    const nama = String(kode || '').toUpperCase();
+    if(!confirm('Hapus kode promo ' + nama + '?')) return;
+    const data = window.getOwnerData();
+    data.promo = (Array.isArray(data.promo) ? data.promo : []).filter(function(p){
+      return String(p.kode).toUpperCase() !== nama;
+    });
+    saveOwnerData(data);
+    terapkanPromoKeHalaman(data);
+    window.renderPromoOwner();
+    tampilkanPesan('Kode promo ' + nama + ' dihapus', false);
+  };
+
+  window.bersihkanPromoOwner = function(){
+    if(!requireLoggedIn()) return;
+    if(!window.promoOwner().length) return;
+    if(!confirm('Kembalikan daftar promo ke kode bawaan? Daftar kode owner akan dihapus.')) return;
+    const data = window.getOwnerData();
+    delete data.promo;
+    saveOwnerData(data);
+    terapkanPromoKeHalaman(data);
+    window.renderPromoOwner();
+    kosongkanFormPromo();
+    tampilkanPesan('Daftar promo dikembalikan ke kode bawaan', false);
+  };
+
+  window.renderPromoOwner = function(){
+    const wadah = document.getElementById('owner-promo-list');
+    if(!wadah) return;
+    const daftar = window.promoOwner();
+    if(!daftar.length){
+      wadah.innerHTML = '<p class="text-xs" style="color:var(--text-secondary);">Belum ada kode promo owner. Selama daftar ini kosong, kode bawaan toko tetap dipakai.</p>';
+      return;
+    }
+    wadah.innerHTML = daftar.map(function(p){
+      const kode = escapeTeks(String(p.kode).toUpperCase());
+      const jenis = (p.tipe === 'persen')
+        ? (Number(p.nilai) + '%')
+        : ('Rp ' + Number(p.nilai).toLocaleString('id-ID'));
+      const tanda = [];
+      if(p.khususPoints) tanda.push('khusus Points');
+      if(p.berlaku) tanda.push('sampai ' + escapeTeks(p.berlaku));
+      if(p.aktif === false) tanda.push('nonaktif');
+      const keterangan = escapeTeks(p.catatan || '');
+      return ''
+        + '<div class="rounded p-2 mb-1 flex items-start justify-between gap-2" style="background:var(--bg-card);">'
+        + '  <div style="min-width:0;">'
+        + '    <div class="text-xs font-semibold">' + kode + ' — ' + jenis + '</div>'
+        + '    <div class="text-xs" style="color:var(--text-secondary);">'
+        + keterangan + (tanda.length ? (keterangan ? ' · ' : '') + tanda.join(' · ') : '')
+        + '</div>'
+        + '  </div>'
+        + '  <div class="flex items-center gap-1">'
+        + '    <button type="button" class="owner-promo-ubah px-2 py-1 rounded text-xs" style="background:var(--bg-card);color:var(--text-primary);" data-kode="' + kode + '">Ubah</button>'
+        + '    <button type="button" class="owner-promo-hapus px-2 py-1 rounded text-xs text-white" style="background:#b91c1c;" data-kode="' + kode + '">Hapus</button>'
+        + '  </div>'
+        + '</div>';
+    }).join('');
+  };
+
+  /* ============================================================
      CADANGAN & PULIHKAN KONTEN
      ------------------------------------------------------------
      Menyimpan banner dan pengaturan game ke satu berkas JSON di
@@ -750,6 +938,9 @@
         estimasi: (gp.estimasi && typeof gp.estimasi === 'object') ? gp.estimasi : {}
       }
     };
+    /* Daftar promo owner ikut dicadangkan, tapi hanya kalau memang ada,
+       supaya berkas lama yang belum memuat promo tetap sama bentuknya. */
+    if(Array.isArray(data.promo)) isi.promo = data.promo;
     return JSON.stringify(isi, null, 2);
   };
 
@@ -767,7 +958,8 @@
       return { ok: false, pesan: 'Berkas ini bukan cadangan Ghothys Store.' };
     }
     if(!Array.isArray(isi.bannerUtama)
-      && !(isi.gamePopuler && typeof isi.gamePopuler === 'object')){
+      && !(isi.gamePopuler && typeof isi.gamePopuler === 'object')
+      && !Array.isArray(isi.promo)){
       return { ok: false, pesan: 'Cadangan tidak memuat konten yang dikenal.' };
     }
     const data = window.getOwnerData();
@@ -779,10 +971,13 @@
       if(isi.gamePopuler.paket && typeof isi.gamePopuler.paket === 'object') data.gamePopuler.paket = isi.gamePopuler.paket;
       if(isi.gamePopuler.estimasi && typeof isi.gamePopuler.estimasi === 'object') data.gamePopuler.estimasi = isi.gamePopuler.estimasi;
     }
+    if(Array.isArray(isi.promo)) data.promo = isi.promo;
     saveOwnerData(data);
+    terapkanPromoKeHalaman(data);
     if(typeof window.renderBannerUtama === 'function') window.renderBannerUtama();
     if(typeof window.renderGamePopuler === 'function') window.renderGamePopuler();
     if(typeof window.renderRiwayatHarga === 'function') window.renderRiwayatHarga();
+    if(typeof window.renderPromoOwner === 'function') window.renderPromoOwner();
     return { ok: true, pesan: 'Cadangan diterapkan.' };
   };
 
@@ -925,11 +1120,32 @@
     const muatPesanan = document.getElementById('owner-pesanan-muat');
     if(muatPesanan) muatPesanan.addEventListener('click', function(){ window.muatRingkasanPesanan(); });
 
+    const simpanPromo = document.getElementById('owner-promo-simpan');
+    if(simpanPromo) simpanPromo.addEventListener('click', function(){ window.simpanPromoOwner(); });
+
+    const bersihkanPromo = document.getElementById('owner-promo-bersihkan');
+    if(bersihkanPromo) bersihkanPromo.addEventListener('click', function(){ window.bersihkanPromoOwner(); });
+
+    const wadahPromo = document.getElementById('owner-promo-list');
+    if(wadahPromo && wadahPromo.dataset.terpasang !== '1'){
+      wadahPromo.dataset.terpasang = '1';
+      wadahPromo.addEventListener('click', function(ev){
+        const tombol = ev.target.closest('button');
+        if(!tombol) return;
+        if(tombol.classList.contains('owner-promo-ubah')){
+          window.ubahPromoOwner(tombol.getAttribute('data-kode'));
+        } else if(tombol.classList.contains('owner-promo-hapus')){
+          window.hapusPromoOwner(tombol.getAttribute('data-kode'));
+        }
+      });
+    }
+
     document.querySelectorAll('.owner-panel-open').forEach(function(btn){
       btn.addEventListener('click', function(){ window.muatRingkasanPesanan(); });
     });
 
     window.renderRiwayatHarga();
+    window.renderPromoOwner();
 
     pasangPanelGame();
   });

@@ -113,12 +113,40 @@
     };
   }
 
+  /* Daftar kode promo yang ditetapkan owner. null berarti owner belum
+     menetapkan daftar (kode bawaan tetap dipakai); array, termasuk
+     kosong, berarti daftar owner yang berlaku. Bentuk yang tidak sah
+     dibuang supaya data rusak tidak ikut naik ke server. */
+  function promoUntukServer(list){
+    if(!Array.isArray(list)) return null;
+    var hasil = [];
+    for(var i = 0; i < list.length; i++){
+      var p = list[i];
+      if(!p || typeof p !== 'object') continue;
+      var kode = String(p.kode == null ? '' : p.kode).trim();
+      if(!kode) continue;
+      if(p.tipe !== 'persen' && p.tipe !== 'nominal') continue;
+      var nilai = Number(p.nilai);
+      if(!isFinite(nilai) || nilai <= 0) continue;
+      var bersih = { kode: kode.toUpperCase(), tipe: p.tipe };
+      bersih.nilai = p.tipe === 'persen' ? Math.min(Math.floor(nilai), 90) : Math.floor(nilai);
+      bersih.catatan = String(p.catatan == null ? '' : p.catatan).trim();
+      var berlaku = String(p.berlaku == null ? '' : p.berlaku).trim();
+      if(/^\d{4}-\d{2}-\d{2}$/.test(berlaku)) bersih.berlaku = berlaku;
+      if(p.khususPoints === true) bersih.khususPoints = true;
+      if(p.aktif === false) bersih.aktif = false;
+      hasil.push(bersih);
+    }
+    return hasil;
+  }
+
   window.syncOwnerContent = function(data){
     if(!relayUrl || !/^https:\/\//.test(relayUrl)) return { ok: true, skipped: true };
 
     var payload = {
       bannerUtama: Array.isArray(data && data.bannerUtama) ? data.bannerUtama : [],
-      gamePopuler: gamePopulerUntukServer(data && data.gamePopuler)
+      gamePopuler: gamePopulerUntukServer(data && data.gamePopuler),
+      promo: promoUntukServer(data && data.promo)
     };
 
     kirim(payload, false).then(function(r){
@@ -261,16 +289,27 @@
     return hasil.length;
   }
 
+  /* Kode promo dari owner dipasang ke modul Promo. null atau tidak
+     ada berarti owner belum menetapkan daftar, jadi kode bawaan tetap
+     dipakai. Array (boleh kosong) menggantikan kode bawaan. */
+  function pasangPromo(list){
+    if(!window.Promo || typeof window.Promo.setServerPromo !== 'function') return 0;
+    var bersih = promoUntukServer(list);
+    window.Promo.setServerPromo(bersih);
+    return bersih === null ? 0 : bersih.length;
+  }
+
   function renderContent(content){
     if(!content || typeof content !== 'object') return;
 
     var jumlahBanner = pasangBannerUtama(content.bannerUtama);
     var jumlahGame = pasangGamePopuler(content.gamePopuler);
+    var jumlahPromo = pasangPromo(content.promo);
 
     /* Beri tahu halaman supaya katalog digambar ulang kalau
        gamesData sempat terisi lebih dulu. */
     document.dispatchEvent(new CustomEvent('ghothys-konten-masuk', {
-      detail: { banner: jumlahBanner, game: jumlahGame }
+      detail: { banner: jumlahBanner, game: jumlahGame, promo: jumlahPromo }
     }));
   }
 

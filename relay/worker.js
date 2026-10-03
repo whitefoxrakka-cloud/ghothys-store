@@ -1061,7 +1061,8 @@ export default {
 					const adaPilihan = (v.semuaTampil === false && tampil === 0) ? 1 : 0;
 					return tampil + paket + adaPilihan;
 				};
-				const isiPayload = (v) => jmlBanner(v && v.bannerUtama) + hitungGame(v && v.gamePopuler);
+				const hitungPromo = (v) => (Array.isArray(v) ? v.length : 0);
+				const isiPayload = (v) => jmlBanner(v && v.bannerUtama) + hitungGame(v && v.gamePopuler) + hitungPromo(v && v.promo);
 				const kosong = isiPayload(bodyJson) === 0;
 				const force = bodyJson && bodyJson.force === true;
 				if (kosong && !force) {
