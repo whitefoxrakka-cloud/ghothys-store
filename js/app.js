@@ -57,6 +57,7 @@ function attachAppListeners() {
       'open-owner-banner-utama': 'openBannerUtamaManager',
       'open-owner-game-populer': 'openGamePopulerManager',
       'open-owner-promo': 'openPromoManager',
+      'open-owner-maintenance': 'openMaintenanceManager',
       'open-topup-points': 'openTopUpPointsModal',
       'open-faq': 'openFAQModal',
       'open-cara-topup': 'openCaraTopUpModal',

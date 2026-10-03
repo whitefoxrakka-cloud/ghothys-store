@@ -914,6 +914,112 @@
   };
 
   /* ============================================================
+     MODE PERAWATAN
+     ------------------------------------------------------------
+     Menutup toko sementara. Setelan ikut tersimpan ke server lewat
+     content-bridge, jadi pengunjung melihat layar perawatan begitu
+     memuat halaman. Owner yang sudah login tetap bisa masuk, jadi
+     tidak pernah terkunci di luar tokonya sendiri.
+     ============================================================ */
+
+  window.maintenanceOwner = function(){
+    const data = window.getOwnerData();
+    const m = data.perawatan;
+    if(!m || typeof m !== 'object') return { aktif: false, pesan: '', sampai: '' };
+    return {
+      aktif: m.aktif === true,
+      pesan: String(m.pesan || ''),
+      sampai: String(m.sampai || '')
+    };
+  };
+
+  window.openMaintenanceManager = function(){
+    if(!requireLoggedIn()) return;
+    const section = document.getElementById('owner-maintenance-section');
+    if(section) section.style.display = 'block';
+    window.renderMaintenanceOwner();
+  };
+
+  window.closeMaintenanceManager = function(){
+    const section = document.getElementById('owner-maintenance-section');
+    if(section) section.style.display = 'none';
+  };
+
+  window.renderMaintenanceOwner = function(){
+    const m = window.maintenanceOwner();
+    const pesan = document.getElementById('owner-maintenance-pesan');
+    if(pesan) pesan.value = m.pesan;
+    const sampai = document.getElementById('owner-maintenance-sampai');
+    if(sampai) sampai.value = m.sampai;
+    const status = document.getElementById('owner-maintenance-status');
+    if(status){
+      status.textContent = m.aktif ? 'Aktif' : 'Nonaktif';
+      status.style.color = m.aktif ? '#f59e0b' : 'var(--text-secondary)';
+    }
+    const matikan = document.getElementById('owner-maintenance-matikan');
+    if(matikan) matikan.disabled = !m.aktif;
+  };
+
+  /* nilaiAktif true = nyalakan, false = matikan. Pesan dan waktu
+     selesai tetap disimpan meski mode sedang dimatikan, supaya
+     setelan tidak hilang saat sekadar menutup toko. */
+  window.simpanMaintenanceOwner = function(nilaiAktif){
+    if(!requireLoggedIn()) return;
+    const ambil = function(id){ const el = document.getElementById(id); return el ? String(el.value || '') : ''; };
+    const pesan = ambil('owner-maintenance-pesan').trim();
+    const sampai = ambil('owner-maintenance-sampai').trim();
+
+    if(pesan.length > 500){
+      tampilkanPesan('Pesan perawatan terlalu panjang (maksimal 500 huruf)', true); return;
+    }
+    if(sampai && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(sampai)){
+      tampilkanPesan('Waktu selesai harus diisi lengkap', true); return;
+    }
+
+    const data = window.getOwnerData();
+    const aktif = (nilaiAktif === false) ? false : true;
+    const baru = { aktif: aktif };
+    if(pesan) baru.pesan = pesan;
+    if(sampai) baru.sampai = sampai;
+    data.perawatan = baru;
+    saveOwnerData(data);
+    terapkanMaintenanceKeHalaman(data);
+    window.renderMaintenanceOwner();
+    tampilkanPesan(aktif ? 'Mode perawatan dinyalakan' : 'Mode perawatan dimatikan', false);
+  };
+
+  /* Tombol "Nonaktifkan" sengaja TIDAK lewat validasi form. Menutup
+     toko harus selalu bisa, walau isi pesan atau waktu selesai di
+     layar sedang tidak lengkap. */
+  window.matikanMaintenanceOwner = function(){
+    if(!requireLoggedIn()) return;
+    const status = window.maintenanceOwner();
+    if(!status.aktif){
+      tampilkanPesan('Mode perawatan sudah nonaktif', false);
+      return;
+    }
+    const data = window.getOwnerData();
+    const lama = (data.perawatan && typeof data.perawatan === 'object') ? data.perawatan : {};
+    const baru = { aktif: false };
+    if(lama.pesan) baru.pesan = String(lama.pesan);
+    if(lama.sampai) baru.sampai = String(lama.sampai);
+    data.perawatan = baru;
+    saveOwnerData(data);
+    terapkanMaintenanceKeHalaman(data);
+    window.renderMaintenanceOwner();
+    tampilkanPesan('Mode perawatan dimatikan', false);
+  };
+
+  /* Pasang setelan yang baru disimpan ke halaman yang sedang dibuka
+     di browser owner ini. Owner yang login tidak ikut terkena layar,
+     jadi perubahannya tidak mengganggu kerja owner. */
+  function terapkanMaintenanceKeHalaman(data){
+    if(typeof window.pasangModeMaintenance !== 'function') return;
+    const m = (data && data.perawatan) || { aktif: false };
+    window.pasangModeMaintenance(m);
+  }
+
+  /* ============================================================
      CADANGAN & PULIHKAN KONTEN
      ------------------------------------------------------------
      Menyimpan banner dan pengaturan game ke satu berkas JSON di
@@ -1140,12 +1246,19 @@
       });
     }
 
+    const simpanMaint = document.getElementById('owner-maintenance-simpan');
+    if(simpanMaint) simpanMaint.addEventListener('click', function(){ window.simpanMaintenanceOwner(true); });
+
+    const matikanMaint = document.getElementById('owner-maintenance-matikan');
+    if(matikanMaint) matikanMaint.addEventListener('click', function(){ window.matikanMaintenanceOwner(); });
+
     document.querySelectorAll('.owner-panel-open').forEach(function(btn){
       btn.addEventListener('click', function(){ window.muatRingkasanPesanan(); });
     });
 
     window.renderRiwayatHarga();
     window.renderPromoOwner();
+    window.renderMaintenanceOwner();
 
     pasangPanelGame();
   });
@@ -1157,11 +1270,13 @@
      lewat kotak Sinkronisasi Konten. */
   function showOwnerButtonIfAllowed(){
     const list = document.querySelectorAll('.owner-panel-open');
-    if(!list.length) return;
     const ownerEmail = (window.GHOTHYS_NOTIFY_CONFIG?.ownerEmail || '').toLowerCase();
     const userEmail = (window.currentUser?.email || '').toLowerCase();
     const isOwner = !!window.currentUser && userEmail === ownerEmail && ownerEmail !== '';
     list.forEach(function(btn){ btn.style.display = isOwner ? 'inline-block' : 'none'; });
+    /* Owner yang baru login harus langsung dilepas dari layar
+       perawatan, dan yang logout kembali melihatnya. */
+    if(typeof window.periksaModeMaintenance === 'function') window.periksaModeMaintenance();
   }
   window.refreshOwnerButton = showOwnerButtonIfAllowed;
 

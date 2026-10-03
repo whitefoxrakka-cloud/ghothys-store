@@ -449,6 +449,14 @@
     'Urutkan acara': 'Sort events',
     // Banner
     'Banner': 'Banners',
+    // Mode Perawatan
+    'Toko Sedang Dalam Perawatan': 'Store Under Maintenance',
+    'Kami sedang melakukan perawatan singkat. Silakan kembali beberapa saat lagi.':
+      'We are doing a short maintenance. Please come back in a moment.',
+    'Masuk sebagai owner': 'Sign in as owner',
+    'Diperkirakan selesai': 'Estimated finish',
+    'Simpan & Aktifkan': 'Save & Activate',
+    'Mode Perawatan': 'Maintenance Mode',
     },
   };
 

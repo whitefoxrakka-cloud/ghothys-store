@@ -140,13 +140,27 @@
     return hasil;
   }
 
+  /* Setelan mode perawatan dari owner. Bentuk yang tidak sah
+     dibuang. Hasil selalu berupa objek supaya server tahu mode
+     mati, bukan "belum diatur". */
+  function maintenanceUntukServer(m){
+    var asal = (m && typeof m === 'object') ? m : {};
+    var hasil = { aktif: asal.aktif === true };
+    var pesan = String(asal.pesan == null ? '' : asal.pesan).trim();
+    if(pesan) hasil.pesan = pesan.slice(0, 500);
+    var sampai = String(asal.sampai == null ? '' : asal.sampai).trim();
+    if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(sampai)) hasil.sampai = sampai;
+    return hasil;
+  }
+
   window.syncOwnerContent = function(data){
     if(!relayUrl || !/^https:\/\//.test(relayUrl)) return { ok: true, skipped: true };
 
     var payload = {
       bannerUtama: Array.isArray(data && data.bannerUtama) ? data.bannerUtama : [],
       gamePopuler: gamePopulerUntukServer(data && data.gamePopuler),
-      promo: promoUntukServer(data && data.promo)
+      promo: promoUntukServer(data && data.promo),
+      perawatan: maintenanceUntukServer(data && data.perawatan)
     };
 
     kirim(payload, false).then(function(r){
@@ -299,12 +313,128 @@
     return bersih === null ? 0 : bersih.length;
   }
 
+  /* ------------------------------------------------------------
+     MODE PERAWATAN
+     ------------------------------------------------------------
+     Owner bisa menutup toko sementara. Pengunjung melihat layar
+     perawatan, owner yang sudah login tetap masuk. Ini sekat
+     tampilan, bukan kunci server: endpoint pesanan tidak berubah.
+     Setelan datang dari {relayUrl}/content seperti konten lain. */
+
+  var ID_LAYAR = 'ghothys-maintenance';
+  var modeMaint = null;
+
+  function escapeHtml(teks){
+    return String(teks == null ? '' : teks)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  /* True kalau pengunjung ini owner yang sudah login, supaya owner
+     tidak ikut terkunci di luar tokonya sendiri. */
+  function pemilikSekarang(){
+    var cfg = window.GHOTHYS_NOTIFY_CONFIG || {};
+    var ownerEmail = String(cfg.ownerEmail || '').toLowerCase();
+    if(!ownerEmail) return false;
+    var user = window.currentUser || {};
+    return String(user.email || '').toLowerCase() === ownerEmail;
+  }
+
+  /* Mode dianggap berlaku kalau aktif dan (kalau ada) batas waktunya
+     belum lewat. Tanpa batas waktu, mode tetap berlaku sampai owner
+     mematikannya. */
+  function masihBerlaku(m){
+    if(!m || m.aktif !== true) return false;
+    if(m.sampai){
+      var t = Date.parse(m.sampai);
+      if(isFinite(t) && Date.now() >= t) return false;
+    }
+    return true;
+  }
+
+  function hapusLayar(){
+    var el = document.getElementById(ID_LAYAR);
+    if(el && el.parentNode) el.parentNode.removeChild(el);
+  }
+
+  function tampilkanLayar(m){
+    var cfg = window.GHOTHYS_NOTIFY_CONFIG || {};
+    var store = cfg.storeName || 'Ghothys Store';
+    var pesan = (m && m.pesan)
+      ? m.pesan
+      : 'Kami sedang melakukan perawatan singkat. Silakan kembali beberapa saat lagi.';
+    var sampai = (m && m.sampai) ? String(m.sampai).replace('T', ' ') : '';
+    var isi = ''
+      + '<div style="max-width:520px;width:100%;text-align:center;">'
+      +   '<div style="font-size:14px;font-weight:800;letter-spacing:1px;margin-bottom:16px;color:var(--text-secondary,#9ca3af);">' + escapeHtml(store) + '</div>'
+      +   '<h1 style="font-size:26px;font-weight:900;margin:0 0 12px;color:var(--text-primary,#f9fafb);">Toko Sedang Dalam Perawatan</h1>'
+      +   '<p style="font-size:14px;line-height:1.7;margin:0 0 10px;color:var(--text-secondary,#9ca3af);">' + escapeHtml(pesan) + '</p>'
+      +   (sampai
+            ? '<p style="font-size:13px;margin:0 0 10px;color:var(--text-secondary,#9ca3af);"><span>Diperkirakan selesai</span>: ' + escapeHtml(sampai) + '</p>'
+            : '')
+      +   '<button type="button" id="ghothys-maint-masuk" style="margin-top:16px;padding:11px 18px;font-size:13px;font-weight:700;color:#fff;background:#4f46e5;border:0;border-radius:12px;cursor:pointer;">Masuk sebagai owner</button>'
+      + '</div>';
+
+    var el = document.getElementById(ID_LAYAR);
+    if(!el){
+      el = document.createElement('div');
+      el.id = ID_LAYAR;
+      el.setAttribute('style',
+        'position:fixed;inset:0;z-index:45;display:flex;align-items:center;'
+        + 'justify-content:center;padding:24px;background:var(--bg-primary,#0b0b12);');
+      document.body.appendChild(el);
+    }
+    el.innerHTML = isi;
+    var tombol = document.getElementById('ghothys-maint-masuk');
+    if(tombol && typeof window.openLoginModal === 'function'){
+      tombol.addEventListener('click', function(){ window.openLoginModal(); });
+    }
+  }
+
+  function perbaruiLayar(){
+    if(!masihBerlaku(modeMaint) || pemilikSekarang()){
+      hapusLayar();
+      return false;
+    }
+    tampilkanLayar(modeMaint);
+    return true;
+  }
+
+  /* Dipanggil owner.js (lewat pembungkus updateUI) setiap kali status
+     login berubah, dan dipakai uji. */
+  window.periksaModeMaintenance = function(){
+    return perbaruiLayar();
+  };
+
+  /* Dipakai owner.js supaya setelan yang baru disimpan di browser
+     owner langsung terpasang tanpa menunggu balasan server. */
+  window.pasangModeMaintenance = function(m){
+    modeMaint = maintenanceUntukServer(m);
+    return perbaruiLayar();
+  };
+
+  function pasangMaintenance(m){
+    modeMaint = maintenanceUntukServer(m);
+    var tampil = perbaruiLayar();
+    if(tampil && modeMaint.sampai){
+      var sisa = Date.parse(modeMaint.sampai) - Date.now();
+      if(isFinite(sisa) && sisa > 0){
+        window.setTimeout(function(){ perbaruiLayar(); }, Math.min(sisa, 2147483000));
+      }
+    }
+    return tampil;
+  }
+
   function renderContent(content){
     if(!content || typeof content !== 'object') return;
 
     var jumlahBanner = pasangBannerUtama(content.bannerUtama);
     var jumlahGame = pasangGamePopuler(content.gamePopuler);
     var jumlahPromo = pasangPromo(content.promo);
+
+    /* Mode perawatan tidak mengubah katalog; kalau owner sedang
+       menutup toko, layar perawatan dipasang di atas halaman. */
+    pasangMaintenance(content.perawatan);
 
     /* Beri tahu halaman supaya katalog digambar ulang kalau
        gamesData sempat terisi lebih dulu. */
