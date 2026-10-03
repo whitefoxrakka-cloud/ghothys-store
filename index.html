@@ -39,7 +39,7 @@
     <link rel="stylesheet" href="css/faq.css?v=20260925d">
    <link rel="stylesheet" href="css/profile.css?v=20260925d">
  <link rel="stylesheet" href="css/transaction.css?v=20260925d">
-<link rel="stylesheet" href="css/order-status.css?v=20261003a">
+<link rel="stylesheet" href="css/order-status.css?v=20261003c">
 <link rel="stylesheet" href="css/riwayat.css?v=20260929a">
 <link rel="stylesheet" href="css/promo.css?v=20260929a">
 <link rel="stylesheet" href="css/referral.css?v=20260930a">
@@ -425,6 +425,7 @@
     <div style="background:var(--bg-primary); border-radius:14px; padding:18px; margin-bottom:16px; border:1px solid var(--border-color);">
      <div class="flex justify-between py-1"><span style="color:var(--text-secondary); font-weight:600;">Order ID</span><span id="pay-order-id" class="font-bold" style="color:var(--text-primary)">—</span></div>
      <div class="flex justify-between py-1" id="pay-promo" style="display:none;"><span style="color:var(--text-secondary); font-weight:600;" id="pay-promo-label">-</span><span class="font-bold" style="color:#22c55e;" id="pay-promo-potong">-</span></div>
+     <div class="flex justify-between py-1" id="pay-kode-unik" style="display:none;"><span style="color:var(--text-secondary); font-weight:600;">Kode Unik</span><span class="font-bold" style="color:var(--text-primary);" id="pay-kode-unik-nilai">-</span></div>
      <div class="flex justify-between py-1"><span style="color:var(--text-secondary); font-weight:600;">Total Bayar</span><span id="pay-total" class="font-bold text-purple-600">-</span></div>
      <div class="flex justify-between py-1"><span style="color:var(--text-secondary); font-weight:600;">Metode</span><span id="pay-method" class="font-bold" style="color:var(--text-primary)">—</span></div>
     </div>
@@ -442,6 +443,16 @@
 2. Klik tombol di bawah untuk konfirmasi via WhatsApp.<br/>
 3. Kirim screenshot bukti transfer di chat WhatsApp.<br/>
 4. Pesanan diproses 1-5 menit setelah pembayaran dikonfirmasi.
+</div>
+<div id="pay-bukti-bayar" style="display:none; background:var(--bg-primary); border:1px solid var(--border-color); border-radius:14px; padding:16px; margin-bottom:14px;">
+ <div class="text-sm font-semibold mb-2" style="color:var(--text-primary)">Unggah Bukti Pembayaran</div>
+ <p class="text-xs mb-2" style="color:var(--text-secondary); line-height:1.5;">Pilih foto atau screenshot bukti transfer (JPG, PNG, atau WebP, maksimal 3 MB), lalu tekan Kirim Bukti. Boleh juga dikirim lewat WhatsApp.</p>
+ <input type="file" id="pay-bukti-input" accept="image/png,image/jpeg,image/webp" class="w-full text-xs" style="color:var(--text-secondary);" />
+ <button id="pay-bukti-upload" type="button" class="w-full mt-2 py-2.5 rounded-lg text-xs font-bold" style="background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-primary); cursor:pointer;">Kirim Bukti</button>
+ <div id="pay-bukti-status" class="text-xs mt-2" style="color:var(--text-secondary);"></div>
+ <div id="pay-bukti-preview" style="display:none; margin-top:10px;">
+  <img id="pay-bukti-img" alt="Bukti pembayaran" style="max-width:100%; border-radius:10px; border:1px solid var(--border-color);" />
+ </div>
 </div>
 <div id="pay-detail-box" style="display:none; margin-bottom:14px;">
 <pre id="pay-detail-text" style="white-space:pre-wrap; word-break:break-word; margin:0; padding:13px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; line-height:1.6; color:var(--text-primary); background:var(--bg-primary); border:1px solid var(--border-color); border-radius:11px; text-align:left;"></pre>
@@ -797,6 +808,7 @@
                   <button id="owner-open-game-populer" data-action="open-owner-game-populer" class="px-3 py-1 rounded bg-purple-600 text-sm">Atur Game Populer</button>
                   <button id="owner-open-promo" data-action="open-owner-promo" class="px-3 py-1 rounded bg-emerald-600 text-sm">Atur Promo</button>
                   <button id="owner-open-maintenance" data-action="open-owner-maintenance" class="px-3 py-1 rounded bg-amber-500 text-sm">Mode Perawatan</button>
+                  <button id="owner-open-kode-unik" data-action="open-owner-kode-unik" class="px-3 py-1 rounded bg-green-600 text-sm">Kode Unik</button>
                   <button class="owner-close text-3xl" style="color:var(--text-secondary)">×</button>
                </div>
             </div>
@@ -1017,6 +1029,21 @@
                     </div>
                  </div>
               </div>
+
+              <!-- Kode Unik: nominal transfer unik per pesanan -->
+              <div id="owner-kode-unik-section" style="display:none;" class="mt-6 col-span-full">
+                 <div class="rounded-lg p-4" style="background:var(--bg-primary);">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                       <h3 class="font-semibold">Kode Unik Pembayaran</h3>
+                       <span id="owner-kode-unik-status" class="text-xs px-2 py-1 rounded" style="background:var(--bg-card);color:var(--text-secondary);">Nonaktif</span>
+                    </div>
+                    <p class="text-xs mt-1" style="color:var(--text-secondary);">Saat aktif, total bayar setiap pesanan ditambah 3 angka acak (100-999) sehingga nominal transfer unik dan mudah dicocokkan dengan pesanannya. Kode tampil di halaman pembayaran dan pesan WhatsApp. Tidak berlaku untuk pembayaran dengan Points. Setelan ini ikut tersimpan ke server.</p>
+                    <div class="flex items-center gap-2 mt-3 flex-wrap">
+                       <button type="button" id="owner-kode-unik-aktifkan" class="px-4 py-2 rounded text-white font-semibold" style="background:#16a34a;">Nyalakan</button>
+                       <button type="button" id="owner-kode-unik-matikan" class="px-3 py-2 rounded text-sm" style="background:var(--bg-card);color:var(--text-primary);">Matikan</button>
+                    </div>
+                 </div>
+              </div>
          </div>
       </div>
    </div><!-- Toasts -->
@@ -1048,7 +1075,7 @@
  <script src="js/constants.js?v=20260925d"></script>
  <script src="js/storage.js?v=20260925d"></script>
  <script src="js/utilities.js?v=20260925d"></script>
- <script src="js/bahasa.js?v=20261003b"></script>
+ <script src="js/bahasa.js?v=20261003c"></script>
  <script src="js/slider.js?v=20260925d"></script>
  <script src="js/render.js?v=20261001a"></script>
  <script src="js/router.js?v=20261003b"></script>
@@ -1068,11 +1095,12 @@
    <script src="js/promo.js?v=20260929b"></script>
    <script src="js/referral.js?v=20260930b"></script>
    <script src="js/export.js?v=20260930a"></script>
-   <script src="js/topup.js?v=20260929b"></script>
-   <script src="js/owner.js?v=20261003b"></script>
-   <script src="js/content-bridge.js?v=20261003b"></script>
+   <script src="js/bukti-bayar.js?v=20261003c"></script>
+   <script src="js/topup.js?v=20261003c"></script>
+   <script src="js/owner.js?v=20261003c"></script>
+   <script src="js/content-bridge.js?v=20261003c"></script>
    <script src="js/owner-sync.js?v=20261003b"></script>
-				<script src="js/order-status.js?v=20261003a"></script>
-    <script src="js/app.js?v=20261003b"></script>
+				<script src="js/order-status.js?v=20261003c"></script>
+    <script src="js/app.js?v=20261003c"></script>
  <!-- Removed iframe/CLOUDFLARE challenge injection to prevent 404 and MIME errors -->
 </body></html>

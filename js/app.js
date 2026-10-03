@@ -58,6 +58,7 @@ function attachAppListeners() {
       'open-owner-game-populer': 'openGamePopulerManager',
       'open-owner-promo': 'openPromoManager',
       'open-owner-maintenance': 'openMaintenanceManager',
+      'open-owner-kode-unik': 'openKodeUnikManager',
       'open-topup-points': 'openTopUpPointsModal',
       'open-faq': 'openFAQModal',
       'open-cara-topup': 'openCaraTopUpModal',

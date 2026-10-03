@@ -153,6 +153,14 @@
     return hasil;
   }
 
+  /* Saklar kode unik pembayaran dari owner. Kalau aktif, total
+     pembayaran diberi tambahan 3 angka acak supaya tiap transfer
+     mudah dicocokkan dengan pesanannya. Bentuk tidak sah dibuang. */
+  function kodeUnikUntukServer(k){
+    var asal = (k && typeof k === 'object') ? k : {};
+    return { aktif: asal.aktif === true };
+  }
+
   window.syncOwnerContent = function(data){
     if(!relayUrl || !/^https:\/\//.test(relayUrl)) return { ok: true, skipped: true };
 
@@ -160,7 +168,8 @@
       bannerUtama: Array.isArray(data && data.bannerUtama) ? data.bannerUtama : [],
       gamePopuler: gamePopulerUntukServer(data && data.gamePopuler),
       promo: promoUntukServer(data && data.promo),
-      perawatan: maintenanceUntukServer(data && data.perawatan)
+      perawatan: maintenanceUntukServer(data && data.perawatan),
+      kodeUnik: kodeUnikUntukServer(data && data.kodeUnik)
     };
 
     kirim(payload, false).then(function(r){
@@ -413,6 +422,23 @@
     return perbaruiLayar();
   };
 
+  /* ------------------------------------------------------------
+     KODE UNIK
+     ------------------------------------------------------------
+     Saklar dari owner, dibaca topup.js saat checkout. Tidak
+     mengubah tampilan apa pun; hanya memberi tahu apakah total
+     pembayaran perlu ditambah 3 angka unik. */
+  var setelanKodeUnik = { aktif: false };
+
+  window.kodeUnikAktif = function(){
+    return setelanKodeUnik.aktif === true;
+  };
+
+  window.pasangKodeUnik = function(k){
+    setelanKodeUnik = kodeUnikUntukServer(k);
+    return setelanKodeUnik;
+  };
+
   function pasangMaintenance(m){
     modeMaint = maintenanceUntukServer(m);
     var tampil = perbaruiLayar();
@@ -435,6 +461,7 @@
     /* Mode perawatan tidak mengubah katalog; kalau owner sedang
        menutup toko, layar perawatan dipasang di atas halaman. */
     pasangMaintenance(content.perawatan);
+    window.pasangKodeUnik(content.kodeUnik);
 
     /* Beri tahu halaman supaya katalog digambar ulang kalau
        gamesData sempat terisi lebih dulu. */

@@ -1020,6 +1020,56 @@
   }
 
   /* ============================================================
+     KODE UNIK PEMBAYARAN
+     ------------------------------------------------------------
+     Kalau aktif, total bayar tiap pesanan ditambah 3 angka acak
+     sehingga setiap transfer punya nominal yang unik dan mudah
+     dicocokkan dengan pesanan. Saklar ini disimpan ke server lewat
+     content-bridge seperti setelan lain.
+     ============================================================ */
+
+  window.kodeUnikOwner = function(){
+    const data = window.getOwnerData();
+    const k = data.kodeUnik;
+    if(!k || typeof k !== 'object') return { aktif: false };
+    return { aktif: k.aktif === true };
+  };
+
+  window.openKodeUnikManager = function(){
+    if(!requireLoggedIn()) return;
+    const section = document.getElementById('owner-kode-unik-section');
+    if(section) section.style.display = 'block';
+    window.renderKodeUnikOwner();
+  };
+
+  window.closeKodeUnikManager = function(){
+    const section = document.getElementById('owner-kode-unik-section');
+    if(section) section.style.display = 'none';
+  };
+
+  window.renderKodeUnikOwner = function(){
+    const k = window.kodeUnikOwner();
+    const status = document.getElementById('owner-kode-unik-status');
+    if(status){
+      status.textContent = k.aktif ? 'Aktif' : 'Nonaktif';
+      status.style.color = k.aktif ? '#16a34a' : 'var(--text-secondary)';
+    }
+    const matikan = document.getElementById('owner-kode-unik-matikan');
+    if(matikan) matikan.disabled = !k.aktif;
+  };
+
+  window.simpanKodeUnikOwner = function(nilaiAktif){
+    if(!requireLoggedIn()) return;
+    const data = window.getOwnerData();
+    const aktif = (nilaiAktif === false) ? false : true;
+    data.kodeUnik = { aktif: aktif };
+    saveOwnerData(data);
+    if(typeof window.pasangKodeUnik === 'function') window.pasangKodeUnik(data.kodeUnik);
+    window.renderKodeUnikOwner();
+    tampilkanPesan(aktif ? 'Kode unik pembayaran dinyalakan' : 'Kode unik pembayaran dimatikan', false);
+  };
+
+  /* ============================================================
      CADANGAN & PULIHKAN KONTEN
      ------------------------------------------------------------
      Menyimpan banner dan pengaturan game ke satu berkas JSON di
@@ -1252,6 +1302,12 @@
     const matikanMaint = document.getElementById('owner-maintenance-matikan');
     if(matikanMaint) matikanMaint.addEventListener('click', function(){ window.matikanMaintenanceOwner(); });
 
+    const nyalaKodeUnik = document.getElementById('owner-kode-unik-aktifkan');
+    if(nyalaKodeUnik) nyalaKodeUnik.addEventListener('click', function(){ window.simpanKodeUnikOwner(true); });
+
+    const matiKodeUnik = document.getElementById('owner-kode-unik-matikan');
+    if(matiKodeUnik) matiKodeUnik.addEventListener('click', function(){ window.simpanKodeUnikOwner(false); });
+
     document.querySelectorAll('.owner-panel-open').forEach(function(btn){
       btn.addEventListener('click', function(){ window.muatRingkasanPesanan(); });
     });
@@ -1259,6 +1315,7 @@
     window.renderRiwayatHarga();
     window.renderPromoOwner();
     window.renderMaintenanceOwner();
+    window.renderKodeUnikOwner();
 
     pasangPanelGame();
   });

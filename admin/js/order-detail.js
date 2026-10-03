@@ -83,6 +83,35 @@
     }
   }
 
+  function relayBase(){
+    const cfg = window.GHOTHYS_NOTIFY_CONFIG || {};
+    return String(cfg.relayUrl || '').replace(/\/+$/, '');
+  }
+
+  function pasangBuktiBayar(orderId){
+    const status = document.getElementById('bukti-status');
+    const kotak = document.getElementById('bukti-preview');
+    const link = document.getElementById('bukti-link');
+    const img = document.getElementById('bukti-img');
+    if(!orderId || !img) return;
+    const base = relayBase();
+    if(!base){
+      if(status) status.textContent = 'Alamat relay belum dikonfigurasi.';
+      return;
+    }
+    const url = base + '/bukti-bayar?order_id=' + encodeURIComponent(orderId);
+    if(link) link.href = url;
+    img.onload = function(){
+      if(kotak) kotak.style.display = 'block';
+      if(status) status.textContent = 'Bukti pembayaran dari pembeli. Klik gambar untuk membuka ukuran penuh.';
+    };
+    img.onerror = function(){
+      if(kotak) kotak.style.display = 'none';
+      if(status) status.textContent = 'Belum ada bukti yang diunggah untuk pesanan ini.';
+    };
+    img.src = url + '&t=' + Date.now();
+  }
+
   document.addEventListener('DOMContentLoaded', async () => {
     ensureToasts();
 
@@ -136,6 +165,7 @@
       setText('f-created-at', createdAt);
 
       setButtonsForStatus(order.status);
+      pasangBuktiBayar(order.order_id || order.orderId);
     }catch(err){
       const st = err && err.status ? err.status : null;
       if(st === 401 || st === 403){

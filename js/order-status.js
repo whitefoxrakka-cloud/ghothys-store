@@ -122,8 +122,31 @@
 			'</div>',
 			'<div class="os-note">Simpan Order ID ini. Hubungi CS Ghothys Store kalau butuh bantuan.</div>',
 			wa ? ('<a class="os-wa-btn" href="' + escapeHtml(wa) + '" target="_blank" rel="noopener noreferrer">Chat WhatsApp</a>') : '',
+			'<div id="os-bukti" class="os-bukti">',
+			'<div class="os-bukti-title">Bukti Pembayaran</div>',
+			'<p class="os-bukti-sub">' + (order.buktiBayar ? 'Bukti sudah diunggah. Kirim ulang kalau ada yang baru.' : 'Belum ada bukti. Unggah foto atau screenshot transfer (JPG, PNG, atau WebP, maksimal 3 MB).') + '</p>',
+			(order.buktiBayar ? '<a id="os-bukti-link" href="#" target="_blank" rel="noopener noreferrer" class="os-bukti-lihat">Lihat bukti</a>' : ''),
+			'<input type="file" id="os-bukti-input" accept="image/png,image/jpeg,image/webp" class="os-bukti-input" />',
+			'<button type="button" id="os-bukti-upload" class="os-bukti-btn">Kirim Bukti</button>',
+			'<div id="os-bukti-status" class="os-bukti-status"></div>',
+			'<div id="os-bukti-preview" class="os-bukti-preview" style="display:none;"><img id="os-bukti-img" alt="Bukti pembayaran" /></div>',
+			'</div>',
 			'</div>'
 		].join('');
+	}
+
+	function pasangBuktiBayar(order) {
+		if (!window.BuktiBayar || typeof window.BuktiBayar.pasangForm !== 'function') return;
+		window.BuktiBayar.pasangForm({
+			wadahId: 'os-bukti',
+			inputId: 'os-bukti-input',
+			tombolId: 'os-bukti-upload',
+			statusId: 'os-bukti-status',
+			previewId: 'os-bukti-preview',
+			gambarId: 'os-bukti-img',
+			orderId: order && order.orderId,
+			tampilkanAwal: !!(order && order.buktiBayar)
+		});
 	}
 
 	function renderFormHtml(innerHtml) {
@@ -319,6 +342,7 @@
 			}
 			lastRenderedStatus = nextStatus;
 			renderResult(renderOrderCard(data.order));
+			pasangBuktiBayar(data.order);
 			if (silent && nextStatus && lastRenderedStatus) {
 				showStatusToast(nextStatus);
 			}

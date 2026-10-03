@@ -229,6 +229,20 @@
         }
       }
 
+      // Kode unik pembayaran: tambahan 3 angka acak supaya tiap
+      // transfer punya nominal unik dan mudah dicocokkan dengan
+      // pesanannya. Hanya kalau owner menyalakannya dan bukan
+      // pembayaran dengan Points.
+      let kodeUnikNominal = 0;
+      if(finalPrice !== undefined && payment !== 'Points' &&
+         typeof window.kodeUnikAktif === 'function' && window.kodeUnikAktif() === true){
+        kodeUnikNominal = Math.floor(Math.random() * 900) + 100;
+        if(Math.floor(finalPrice) + kodeUnikNominal > 5000000) kodeUnikNominal = 0;
+      }
+      const hargaBayar = finalPrice !== undefined
+        ? (Math.floor(finalPrice) + kodeUnikNominal)
+        : undefined;
+
       const orderDataPreview = {
         customerName: window.currentUser.nickname || window.currentUser.name,
         game: window.currentGame ? window.currentGame.name : undefined,
@@ -236,7 +250,7 @@
         server: serverId,
         product: pkg ? pkg.name : undefined,
         payment: payment,
-        price: finalPrice !== undefined ? Math.floor(finalPrice) : undefined,
+        price: hargaBayar,
         promoCode: voucherDipakai ? voucherDipakai.kode : '',
         promoPotong: voucherDipakai ? voucherDipakai.potong : 0,
         promoCatatan: voucherDipakai ? voucherDipakai.catatan : '',
@@ -364,8 +378,8 @@
           id: orderId,
           game_name: window.currentGame.name,
           package_name: pkg.name,
-          price: 'Rp ' + Math.floor(finalPrice).toLocaleString('id-ID'),
-          amount: Math.floor(finalPrice),
+          price: 'Rp ' + hargaBayar.toLocaleString('id-ID'),
+          amount: hargaBayar,
           payment_method: payment,
           status: 'Pending',
           points_earned: earned,
@@ -405,7 +419,8 @@
         }
         showPaymentView({
           orderId: orderId,
-          total: Math.floor(finalPrice),
+          total: hargaBayar,
+          kodeUnik: kodeUnikNominal,
           payment: payment,
           game: window.currentGame ? window.currentGame.name : '',
           product: pkg ? pkg.name : '',
@@ -470,6 +485,9 @@
       lines.push('Promo    : ' + info.promoCode + ' (potong Rp ' +
         Number(info.promoPotong || 0).toLocaleString('id-ID') + ')');
     }
+    if(info.kodeUnik){
+      lines.push('Kode     : +Rp ' + Number(info.kodeUnik || 0).toLocaleString('id-ID'));
+    }
     lines.push(
       'Total    : ' + total,
       'Bayar    : ' + (info.payment || '-') + ' a.n. ' + (ownerName || store),
@@ -501,6 +519,10 @@
     if(info.promoCode){
       baris.push('Promo    : ' + info.promoCode + ' (potong Rp ' +
         Number(info.promoPotong || 0).toLocaleString('id-ID') + ')');
+    }
+
+    if(info.kodeUnik){
+      baris.push('Kode     : +Rp ' + Number(info.kodeUnik || 0).toLocaleString('id-ID'));
     }
 
     baris.push(
@@ -570,6 +592,17 @@
       }
     }
 
+    // Baris kode unik, disembunyikan kalau nominalnya nol.
+    const barisKodeUnik = document.getElementById('pay-kode-unik');
+    if(barisKodeUnik){
+      if(info.kodeUnik){
+        barisKodeUnik.style.display = 'flex';
+        setText('pay-kode-unik-nilai', '+ Rp ' + Number(info.kodeUnik || 0).toLocaleString('id-ID'));
+      } else {
+        barisKodeUnik.style.display = 'none';
+      }
+    }
+
     const detailText = formatOrderDetail(info, account, name, cfg);
     const confirmText = buildConfirmMessage(info);
 
@@ -612,6 +645,19 @@
         window.closeModal();
         window.navigateTo && window.navigateTo('transactions-page');
       };
+    }
+
+    // Unggah bukti pembayaran langsung dari layar ini.
+    if(window.BuktiBayar && typeof window.BuktiBayar.pasangForm === 'function'){
+      window.BuktiBayar.pasangForm({
+        wadahId: 'pay-bukti-bayar',
+        inputId: 'pay-bukti-input',
+        tombolId: 'pay-bukti-upload',
+        statusId: 'pay-bukti-status',
+        previewId: 'pay-bukti-preview',
+        gambarId: 'pay-bukti-img',
+        orderId: info.orderId
+      });
     }
 
     if(form) form.style.display = 'none';

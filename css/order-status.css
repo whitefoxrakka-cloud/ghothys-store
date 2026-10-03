@@ -246,3 +246,65 @@
 @media (prefers-reduced-motion:reduce){
   .os-dot{animation:none}
 }
+
+/* Bukti bayar: unggah dari kartu cek status */
+.os-bukti{
+  margin-top:14px;
+  padding:14px;
+  border:1px solid var(--border-color);
+  border-radius:12px;
+  background:var(--bg-card);
+}
+.os-bukti-title{
+  font-size:13px;
+  font-weight:800;
+  color:var(--text-primary);
+  margin-bottom:4px;
+}
+.os-bukti-sub{
+  margin:0 0 10px;
+  font-size:12px;
+  line-height:1.55;
+  color:var(--text-secondary);
+}
+.os-bukti-lihat{
+  display:inline-block;
+  margin-bottom:8px;
+  font-size:12px;
+  font-weight:700;
+  color:#6d28d9;
+  text-decoration:underline;
+}
+.os-bukti-input{
+  display:block;
+  width:100%;
+  font-size:12px;
+  color:var(--text-secondary);
+  margin-bottom:8px;
+}
+.os-bukti-btn{
+  width:100%;
+  padding:10px 14px;
+  border-radius:10px;
+  border:1px solid var(--border-color);
+  background:var(--bg-primary);
+  color:var(--text-primary);
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+}
+.os-bukti-btn:disabled{opacity:.6;cursor:default}
+.os-bukti-status{
+  margin-top:8px;
+  font-size:12px;
+  line-height:1.5;
+  color:var(--text-secondary);
+  min-height:1px;
+}
+.os-bukti-preview{margin-top:10px}
+.os-bukti-preview img{
+  display:block;
+  max-width:100%;
+  border-radius:10px;
+  border:1px solid var(--border-color);
+}
