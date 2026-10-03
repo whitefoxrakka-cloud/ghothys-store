@@ -746,7 +746,8 @@
       gamePopuler: {
         semuaTampil: !!gp.semuaTampil,
         tampil: Array.isArray(gp.tampil) ? gp.tampil : [],
-        paket: (gp.paket && typeof gp.paket === 'object') ? gp.paket : {}
+        paket: (gp.paket && typeof gp.paket === 'object') ? gp.paket : {},
+        estimasi: (gp.estimasi && typeof gp.estimasi === 'object') ? gp.estimasi : {}
       }
     };
     return JSON.stringify(isi, null, 2);
@@ -776,6 +777,7 @@
       if(typeof isi.gamePopuler.semuaTampil === 'boolean') data.gamePopuler.semuaTampil = isi.gamePopuler.semuaTampil;
       if(Array.isArray(isi.gamePopuler.tampil)) data.gamePopuler.tampil = isi.gamePopuler.tampil;
       if(isi.gamePopuler.paket && typeof isi.gamePopuler.paket === 'object') data.gamePopuler.paket = isi.gamePopuler.paket;
+      if(isi.gamePopuler.estimasi && typeof isi.gamePopuler.estimasi === 'object') data.gamePopuler.estimasi = isi.gamePopuler.estimasi;
     }
     saveOwnerData(data);
     if(typeof window.renderBannerUtama === 'function') window.renderBannerUtama();

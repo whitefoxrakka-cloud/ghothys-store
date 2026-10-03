@@ -107,7 +107,9 @@
     return {
       semuaTampil: !!asal.semuaTampil,
       tampil: Array.isArray(asal.tampil) ? asal.tampil : [],
-      paket: (asal.paket && typeof asal.paket === 'object') ? asal.paket : {}
+      paket: (asal.paket && typeof asal.paket === 'object') ? asal.paket : {},
+      estimasi: (asal.estimasi && typeof asal.estimasi === 'object'
+        && !Array.isArray(asal.estimasi)) ? asal.estimasi : {}
     };
   }
 
@@ -221,6 +223,8 @@
     var semuaTampil = konfigurasi.semuaTampil !== false;
     var tampil = Array.isArray(konfigurasi.tampil) ? konfigurasi.tampil : [];
     var paket = (konfigurasi.paket && typeof konfigurasi.paket === 'object') ? konfigurasi.paket : {};
+    var estimasi = (konfigurasi.estimasi && typeof konfigurasi.estimasi === 'object'
+      && !Array.isArray(konfigurasi.estimasi)) ? konfigurasi.estimasi : {};
 
     var hasil = asal.slice();
 
@@ -236,14 +240,19 @@
       });
     }
 
-    /* Paket owner menimpa paket bawaan game itu. Game yang tidak
-       punya paket owner tetap memakai bawaan. */
+    /* Paket dan estimasi owner menimpa nilai bawaan game itu.
+       Game yang tidak punya setelan owner tetap memakai bawaan. */
     hasil = hasil.map(function(g){
-      var milikOwner = paket[String(g.searchKey)];
-      if(!Array.isArray(milikOwner) || !milikOwner.length) return g;
+      var kunciOwner = String(g.searchKey);
+      var milikOwner = paket[kunciOwner];
+      var adaPaket = Array.isArray(milikOwner) && milikOwner.length > 0;
+      var estOwner = estimasi[kunciOwner];
+      var adaEstimasi = typeof estOwner === 'string' && estOwner.trim() !== '';
+      if(!adaPaket && !adaEstimasi) return g;
       var salinan = {};
       for(var k in g){ if(Object.prototype.hasOwnProperty.call(g, k)) salinan[k] = g[k]; }
-      salinan.packages = milikOwner;
+      if(adaPaket) salinan.packages = milikOwner;
+      if(adaEstimasi) salinan.estimasi = estOwner.trim();
       return salinan;
     });
 

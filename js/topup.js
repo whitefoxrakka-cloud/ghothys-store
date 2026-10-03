@@ -1,12 +1,31 @@
 /* Top-up modal and checkout */
 (function(){
+  /* Paket dianggap habis hanya kalau stoknya benar-benar 0.
+     Stok -1 (atau kosong) berarti tidak dibatasi. */
+  function paketStokHabis(p){
+    if(!p || p.stock === null || p.stock === undefined || p.stock === '') return false;
+    var n = Number(p.stock);
+    return isFinite(n) && n === 0;
+  }
+
   window.openGameDetail = function(game){
     if(!window.currentUser){window.showErrorToast('Login Diperlukan','Silakan login dulu');window.openLoginModal();return;}
     window.currentGame=game;
     document.getElementById('modal-icon').innerHTML=`<img src="${game.icon}" alt="${game.name}" style="width:60px;height:60px;object-fit:cover;border-radius:12px;" onerror="this.outerHTML='🎮'">`;
     document.getElementById('modal-title').textContent=game.name;
     if(window.ID_CHECK && window.ID_CHECK.muatPanduan) window.ID_CHECK.muatPanduan(game);
-    document.getElementById('package-options').innerHTML=game.packages.map((p,i)=>{const dp=p.discount>0?p.price*(1-p.discount/100):p.price;return`<label class="border-2 rounded-lg p-4 cursor-pointer hover:border-purple-500" style="border-color:var(--border-color);"><input type="radio" name="package" value='${JSON.stringify(p)}' ${i===0?'required':''} class="mr-2"><div class="flex justify-between items-start"><div><span class="font-semibold" style="color:var(--text-primary)">${p.name}</span>${p.discount>0?`<div class="text-xs text-green-600">🔥 -${p.discount}%</div>`:''}</div><div class="text-purple-600 font-bold">Rp ${Math.floor(dp).toLocaleString('id-ID')}</div></div></label>`;}).join('');
+    /* Estimasi proses ditampilkan dari data game (bawaan atau setelan owner). */
+    const estEl = document.getElementById('modal-estimasi');
+    if(estEl) estEl.textContent = game.estimasi ? 'Estimasi proses: ' + game.estimasi : '';
+    /* Paket dengan stok 0 dianggap habis: radio dinonaktifkan supaya
+       tidak bisa dipilih, dan validasi wajib dipindah ke paket pertama
+       yang masih tersedia. */
+    const daftarPaket = Array.isArray(game.packages) ? game.packages : [];
+    const indeksWajib = daftarPaket.findIndex(function(p){ return !paketStokHabis(p); });
+    document.getElementById('package-options').innerHTML=daftarPaket.map((p,i)=>{const dp=p.discount>0?p.price*(1-p.discount/100):p.price;const habis=paketStokHabis(p);if(habis){return`<label class="border-2 rounded-lg p-4" style="border-color:var(--border-color);opacity:0.55;cursor:not-allowed;"><input type="radio" name="package" value='${JSON.stringify(p)}' disabled class="mr-2"><div class="flex justify-between items-start"><div><span class="font-semibold" style="color:var(--text-primary)">${p.name}</span><div class="text-xs mt-1" style="color:#dc2626;">Stok habis</div></div><div class="text-purple-600 font-bold">Rp ${Math.floor(dp).toLocaleString('id-ID')}</div></div></label>`;}return`<label class="border-2 rounded-lg p-4 cursor-pointer hover:border-purple-500" style="border-color:var(--border-color);"><input type="radio" name="package" value='${JSON.stringify(p)}' ${i===indeksWajib?'required':''} class="mr-2"><div class="flex justify-between items-start"><div><span class="font-semibold" style="color:var(--text-primary)">${p.name}</span>${p.discount>0?`<div class="text-xs text-green-600">🔥 -${p.discount}%</div>`:''}</div><div class="text-purple-600 font-bold">Rp ${Math.floor(dp).toLocaleString('id-ID')}</div></div></label>`;}).join('');
+    if(daftarPaket.length && indeksWajib === -1){
+      document.getElementById('package-options').innerHTML += '<p class="text-sm mt-2" style="color:#dc2626;">Semua paket untuk game ini sedang habis. Silakan pilih game lain atau coba lagi nanti.</p>';
+    }
     document.getElementById('available-points').textContent=window.currentUser.points||0;
     /* Anti-spam: catat kapan form dibuka. Worker menolak order yang
        dikirim < 2 detik setelah form dibuka (ciri bot), dan mengosongkan
@@ -155,6 +174,13 @@
       // Parse package and payment (may be undefined)
       const pkg = packageSelect ? JSON.parse(packageSelect.value) : undefined;
       const payment = paymentSelect ? paymentSelect.value : undefined;
+
+      // Tolak paket yang stoknya habis, termasuk kalau radio-nya
+      // dipaksa aktif lewat alat pengembang peramban.
+      if(paketStokHabis(pkg)){
+        window.showErrorToast('Stok Habis', 'Paket ini sedang habis. Pilih paket lain.');
+        return;
+      }
 
       // Calculate price
       let finalPrice = pkg && typeof pkg.price !== 'undefined'
@@ -354,6 +380,20 @@
         // terbawa ke order berikutnya.
         if (window.Promo && typeof window.Promo.lepasAktif === 'function') {
           window.Promo.lepasAktif();
+        }
+
+        // Program referral: order pertama dari teman yang diundang
+        // menghasilkan reward untuk pengundang, bukan untuk pembeli.
+        if (window.Referral && typeof window.Referral.catatPesanan === 'function') {
+          const reward = window.Referral.catatPesanan({
+            orderId: orderId,
+            nominal: Math.floor(finalPrice)
+          });
+          if (reward.ok) {
+            console.log('[REFERRAL] reward untuk pengundang: Rp ' + reward.reward + ' dari kode ' + reward.kode);
+          } else {
+            console.log('[REFERRAL] reward tidak dihitung: ' + reward.alasan);
+          }
         }
 
         // Show payment instructions (keeps modal open with steps + WA confirm)
