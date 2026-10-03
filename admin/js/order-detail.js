@@ -100,16 +100,36 @@
       return;
     }
     const url = base + '/bukti-bayar?order_id=' + encodeURIComponent(orderId);
-    if(link) link.href = url;
-    img.onload = function(){
-      if(kotak) kotak.style.display = 'block';
-      if(status) status.textContent = 'Bukti pembayaran dari pembeli. Klik gambar untuk membuka ukuran penuh.';
-    };
-    img.onerror = function(){
-      if(kotak) kotak.style.display = 'none';
-      if(status) status.textContent = 'Belum ada bukti yang diunggah untuk pesanan ini.';
-    };
-    img.src = url + '&t=' + Date.now();
+    /* GET bukti sekarang wajib sesi admin, jadi gambar diambil dengan
+       Authorization: Bearer lalu diubah menjadi blob URL. Kalau img.src
+       langsung diarahkan ke relay, balasannya 401. */
+    const token = (window.AdminAPI && window.AdminAPI.getToken && window.AdminAPI.getToken()) || '';
+    if(status) status.textContent = 'Memuat bukti pembayaran...';
+    fetch(url, {
+      method: 'GET',
+      headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+      credentials: 'include'
+    })
+      .then(function(res){
+        if(res.status === 401 || res.status === 403){ const e = new Error('auth'); e.auth = true; throw e; }
+        if(!res.ok) throw new Error('kosong');
+        return res.blob();
+      })
+      .then(function(blob){
+        const objUrl = URL.createObjectURL(blob);
+        img.onload = function(){
+          if(kotak) kotak.style.display = 'block';
+          if(status) status.textContent = 'Bukti pembayaran dari pembeli. Klik gambar untuk membuka ukuran penuh.';
+        };
+        if(link) link.href = objUrl;
+        img.src = objUrl;
+      })
+      .catch(function(err){
+        if(kotak) kotak.style.display = 'none';
+        if(status) status.textContent = (err && err.auth)
+          ? 'Sesi admin tidak valid. Login ulang untuk melihat bukti.'
+          : 'Belum ada bukti yang diunggah untuk pesanan ini.';
+      });
   }
 
   document.addEventListener('DOMContentLoaded', async () => {

@@ -187,7 +187,6 @@
         'Pick a photo or screenshot of the transfer receipt (JPG, PNG, or WebP, up to 3 MB), then press Send Proof. You can also send it on WhatsApp.',
       'Kirim Bukti': 'Send Proof',
       'Bukti Pembayaran': 'Payment Proof',
-      'Lihat bukti': 'View proof',
       'Bukti sudah diunggah. Kirim ulang kalau ada yang baru.':
         'Proof uploaded. Send again if there is a new one.',
       'Belum ada bukti. Unggah foto atau screenshot transfer (JPG, PNG, atau WebP, maksimal 3 MB).':

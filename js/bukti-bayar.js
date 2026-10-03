@@ -6,8 +6,10 @@
      - kartu Cek Status Pesanan (order-status.js)
 
    Mengirim gambar ke {relayUrl}/bukti-bayar sebagai
-   multipart/form-data berisi order_id dan file, lalu menyusun
-   tautan gambar untuk ditampilkan.
+   multipart/form-data berisi order_id dan file, lalu menampilkan
+   pratinjau lokal dari berkas yang baru dipilih. Gambar di server
+   hanya bisa dibuka admin (GET /bukti-bayar wajib sesi admin),
+   karena Order ID berurutan dan mudah ditebak orang lain.
 
    Tidak ada secret di sini. Server yang memvalidasi Order ID,
    jenis gambar, ukuran, dan membatasi jumlah unggahan per IP.
@@ -87,11 +89,18 @@
         : (jenis === 'salah' ? '#dc2626' : 'var(--text-secondary)');
     }
 
-    function tampilkanBukti(){
-      var u = urlBukti(o.orderId);
-      if(!u || !gambar || !preview) return;
-      gambar.src = u + '&t=' + Date.now();
+    /* Pratinjau lokal dari berkas yang baru dipilih. Pembeli TIDAK
+       lagi menarik gambar dari server: GET /bukti-bayar sekarang khusus
+       admin supaya Order ID yang berurutan tidak bisa ditebak orang lain. */
+    function tampilkanLokal(file){
+      if(!file || !gambar || !preview) return;
       preview.style.display = 'block';
+      try {
+        if(gambar.dataset && gambar.dataset.objUrl) URL.revokeObjectURL(gambar.dataset.objUrl);
+        var u = URL.createObjectURL(file);
+        if(gambar.dataset) gambar.dataset.objUrl = u;
+        gambar.src = u;
+      } catch(e){}
     }
 
     tombol.onclick = function(){
@@ -106,14 +115,16 @@
         tombol.textContent = teksAsli;
         if(hasil.ok){
           setStatus('Bukti pembayaran sudah diunggah. Terima kasih.', 'ok');
-          tampilkanBukti();
+          tampilkanLokal(file);
         } else {
           setStatus(hasil.error || 'Gagal mengunggah bukti.', 'salah');
         }
       });
     };
 
-    if(o.tampilkanAwal) tampilkanBukti();
+    /* Bukti sudah pernah diunggah (mis. dibuka dari Cek Status). Gambar
+       tidak bisa ditampilkan lagi karena hanya admin yang boleh membukanya. */
+    if(o.tampilkanAwal) setStatus('Bukti sudah diunggah. Kirim ulang kalau ada yang baru.', 'ok');
   }
 
   window.BuktiBayar = {

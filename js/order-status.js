@@ -110,7 +110,6 @@
 			'<div id="os-bukti" class="os-bukti">',
 			'<div class="os-bukti-title">Bukti Pembayaran</div>',
 			'<p class="os-bukti-sub">' + (order.buktiBayar ? 'Bukti sudah diunggah. Kirim ulang kalau ada yang baru.' : 'Belum ada bukti. Unggah foto atau screenshot transfer (JPG, PNG, atau WebP, maksimal 3 MB).') + '</p>',
-			(order.buktiBayar ? '<a id="os-bukti-link" href="#" target="_blank" rel="noopener noreferrer" class="os-bukti-lihat">Lihat bukti</a>' : ''),
 			'<input type="file" id="os-bukti-input" accept="image/png,image/jpeg,image/webp" class="os-bukti-input" />',
 			'<button type="button" id="os-bukti-upload" class="os-bukti-btn">Kirim Bukti</button>',
 			'<div id="os-bukti-status" class="os-bukti-status"></div>',
