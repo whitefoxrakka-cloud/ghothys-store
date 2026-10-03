@@ -5,8 +5,9 @@
    - Menyembunyikan Discord webhook & token Telegram dari repo.
    - Hanya meneruskan payload yang bentuknya ORDER.
    - Menyimpan order ke Airtable (database order-an owner).
-   - Menyimpan konten owner (banner utama dan daftar game) ke Airtable
-     dan membacanya kembali untuk semua pengunjung (fitur #2).
+   - Menyimpan konten owner (banner utama, daftar game, dan daftar
+     kode promo) ke Airtable dan membacanya kembali untuk semua
+     pengunjung (fitur #2).
 
    Deploy:
    1) Buka https://dash.cloudflare.com -> Workers & Pages
@@ -55,8 +56,8 @@ async function sendToTelegram(token, chatId, text) {
 /* ============================================================
    KONTEN OWNER -> PUBLIK (fitur #2)
    ------------------------------------------------------------
-Konten owner (banner utama beranda dan daftar game beserta paket)
-disimpan sebagai
+Konten owner (banner utama beranda, daftar game beserta paket, dan
+daftar kode promo) disimpan sebagai
    SATU baris JSON di tabel Airtable "Content" dengan ORDER ID =
    'content_owner_1'. Semua pengunjung membaca baris ini lewat
    GET /content; owner menulisnya lewat POST /content (WAJIB salah
@@ -845,18 +846,6 @@ async function handleAdminRoute(request, env, url, headers) {
 		return jsonResponse({ success: true, data: { loggedOut: true } }, 200, h);
 	}
 
-	/* Status sesi untuk panel owner di halaman toko.
-	   Sengaja selalu balas 200 (tidak 401) supaya console browser
-	   tidak dipenuhi error merah setiap pengunjung membuka toko.
-	   Tidak membocorkan apa pun: hanya memberitahu apakah pemanggil
-	   sendiri punya sesi admin yang masih sah. */
-	if (path === '/admin/session' && method === 'GET') {
-		const bearer = (request.headers.get('Authorization') || '').trim().replace(/^Bearer\s+/i, '').trim();
-		const sesi = await verifyJwt(env.JWT_SECRET, bearer || tokenDariCookie(request));
-		const authed = !!(sesi && String(sesi.role || '').toLowerCase() === 'admin');
-		return jsonResponse({ ok: true, data: { authed: authed, email: authed ? sesi.sub : null } }, 200, headers);
-	}
-
 	if (path === '/admin/profile' && method === 'GET') {
 		return jsonResponse({ success: true, data: { email: payload.sub, role: payload.role } }, 200, headers);
 	}
@@ -1035,7 +1024,7 @@ export default {
 			return new Response(JSON.stringify({ ok: false, error: 'Method not allowed' }), { status: 405, headers });
 		}
 
-		if (request.url.includes('/content')) {
+		if (requestUrl.pathname === '/content') {
 			if (!(await isContentWriteAllowed(request, env))) {
 				return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 403, headers });
 			}
