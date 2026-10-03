@@ -56,6 +56,34 @@
 		return (isFinite(v) && v > 0) ? ('Rp ' + v.toLocaleString('id-ID')) : '-';
 	}
 
+	/* Tombol WhatsApp di kartu status: pembeli bisa langsung
+	   menghubungi CS lewat WhatsApp dengan ringkasan pesanan yang
+	   sudah terisi. Nomor diambil dari GHOTHYS_NOTIFY_CONFIG.waNumber
+	   supaya owner cukup mengubah satu tempat. Kalau nomor kosong,
+	   tombol tidak ditampilkan. */
+	function pesanWhatsApp(order) {
+		var cfg = window.GHOTHYS_NOTIFY_CONFIG || {};
+		var store = cfg.storeName || 'Ghothys Store';
+		var baris = [
+			'Halo ' + store + ', saya ingin menanyakan pesanan ini:',
+			'',
+			'Order ID : ' + (order.orderId || '-'),
+			'Game     : ' + (order.game || '-'),
+			'Item     : ' + (order.item || '-'),
+			'Status   : ' + (order.status || '-')
+		];
+		var uid = String(order.uid || '').trim();
+		if (uid) baris.push('User ID  : ' + uid + (order.server ? ' (Server ' + order.server + ')' : ''));
+		return baris.join('\n');
+	}
+
+	function tautanWhatsApp(order) {
+		var cfg = window.GHOTHYS_NOTIFY_CONFIG || {};
+		var nomor = String(cfg.waNumber || '').replace(/[^0-9]/g, '');
+		if (!nomor) return '';
+		return 'https://wa.me/' + nomor + '?text=' + encodeURIComponent(pesanWhatsApp(order));
+	}
+
 	function statusBadge(status) {
 		var s = (status || '').toLowerCase().trim();
 		var label = status || '-';
@@ -75,6 +103,7 @@
 	}
 
 	function renderOrderCard(order) {
+		var wa = tautanWhatsApp(order);
 		return [
 			'<div class="os-card">',
 			'<div class="os-card-head">',
@@ -92,6 +121,7 @@
 			'<div class="os-field"><span class="os-label">Waktu</span><span class="os-value">' + escapeHtml(order.time || '-') + '</span></div>',
 			'</div>',
 			'<div class="os-note">Simpan Order ID ini. Hubungi CS Ghothys Store kalau butuh bantuan.</div>',
+			wa ? ('<a class="os-wa-btn" href="' + escapeHtml(wa) + '" target="_blank" rel="noopener noreferrer">Chat WhatsApp</a>') : '',
 			'</div>'
 		].join('');
 	}
