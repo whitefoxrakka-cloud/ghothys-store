@@ -4,6 +4,26 @@
     return 'Rp ' + x.toLocaleString('id-ID');
   }
 
+  /* Nama game berasal dari katalog, tapi kolom ini disisipkan lewat
+     innerHTML. Pakai aman() supaya aman kalau katalog pernah diubah
+     lewat panel owner. */
+  function aman(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  /* Sel CSV yang diawali =, +, -, atau @ akan dijalankan sebagai
+     rumus saat dibuka di Excel. Awalan kutip tunggal menetralkan. */
+  function selCsv(v) {
+    let s = String(v == null ? '' : v);
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+
   function max(arr) {
     return (arr || []).reduce((m, v) => Math.max(m, Number(v || 0)), 0);
   }
@@ -244,7 +264,7 @@
       else if (r.completion >= 40) badgeClass = 'medium';
       return `
         <tr>
-          <td>${r.game}</td>
+          <td>${aman(r.game)}</td>
           <td>${r.orders}</td>
           <td>${moneyIdr(r.revenue)}</td>
           <td>${moneyIdr(r.avg)}</td>
@@ -401,7 +421,7 @@
       o.customer_name || ''
     ]);
 
-    const csv = [headers.join(','), ...rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(','))].join('\n');
+    const csv = [headers.map(selCsv).join(','), ...rows.map(r => r.map(selCsv).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

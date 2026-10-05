@@ -1,5 +1,20 @@
 /* Profile: avatar, stats, account settings (Backend) */
 (function(){
+  /* Avatar tidak boleh disisipkan lewat innerHTML, karena nilai avatar
+     bisa berisi tanda kutip dan atribut onerror yang jadi celah skrip.
+     Elemen gambar dibuat langsung lalu diisi lewat setAttribute, jadi
+     tidak ada HTML yang diurai sama sekali. */
+  function tampilAvatar(nilai){
+    var wadah=document.getElementById('avatar-display');
+    if(!wadah)return;
+    wadah.textContent='';
+    if(!nilai)return;
+    var gambar=document.createElement('img');
+    gambar.alt='Avatar';
+    gambar.setAttribute('src',String(nilai));
+    wadah.appendChild(gambar);
+  }
+
   window.updateUI = function(){
     if(window.currentUser){
       document.getElementById('user-info').style.display='flex';
@@ -8,7 +23,7 @@
       document.getElementById('profile-nickname').textContent=window.currentUser.nickname||window.currentUser.name;
       document.getElementById('profile-username').textContent='@'+window.currentUser.username;
       document.getElementById('profile-email').textContent=window.currentUser.email;
-      if(window.currentUser.avatar)document.getElementById('avatar-display').innerHTML='<img src="'+window.currentUser.avatar+'" alt="Avatar">';
+      if(window.currentUser.avatar)tampilAvatar(window.currentUser.avatar);
       window.updateProfileStats();
     } else {document.getElementById('user-info').style.display='none';document.getElementById('auth-buttons').style.display='flex';}
   };
@@ -26,7 +41,7 @@
         await window.API.updateProfile({ avatar });
         window.currentUser.avatar=avatar;
         window.saveCurrentUser();
-        document.getElementById('avatar-display').innerHTML='<img src="'+avatar+'" alt="Avatar">';
+        tampilAvatar(avatar);
         window.showToast('Berhasil','Foto diperbarui');
       } catch(err) {
         window.showErrorToast('Gagal',err.message||'Gagal upload avatar');

@@ -4,6 +4,18 @@
     return 'Rp ' + n.toLocaleString('id-ID');
   }
 
+  /* Data order berasal dari pembeli (UID, nama, item) dan bisa memuat
+     tag HTML. Semua yang masuk ke innerHTML WAJIB lewat aman(), kalau
+     tidak skrip pembeli bisa berjalan di sesi admin ini. */
+  function aman(v){
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function ensureToasts(){
     if(typeof window.showErrorToast !== 'function'){
       window.showErrorToast = (t,m)=> alert(`${t}\n\n${m||''}`);
@@ -71,17 +83,17 @@
       const created = o.created_at ? new Date(o.created_at).toLocaleString('id-ID') : '—';
 
       const aksiHtml = `
-        <button class="btn" type="button" data-open="${o.id}" style="padding:8px 12px; border-radius:10px;">Detail</button>
+        <button class="btn" type="button" data-open="${aman(o.id)}" style="padding:8px 12px; border-radius:10px;">Detail</button>
       `;
 
       tr.innerHTML = `
-        <td>${o.order_id || o.orderId || ''}</td>
-        <td>${o.customer_name || ''}</td>
-        <td>${o.user_uid || ''}</td>
-        <td>${o.game || ''}</td>
+        <td>${aman(o.order_id || o.orderId || '')}</td>
+        <td>${aman(o.customer_name || '')}</td>
+        <td>${aman(o.user_uid || '')}</td>
+        <td>${aman(o.game || '')}</td>
         <td>${fmtMoney(o.price)}</td>
-        <td>${o.status || ''}</td>
-        <td>${created}</td>
+        <td>${aman(o.status || '')}</td>
+        <td>${aman(created)}</td>
         <td>${aksiHtml}</td>
       `;
       tbody.appendChild(tr);
