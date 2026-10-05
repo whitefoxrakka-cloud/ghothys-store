@@ -1,9 +1,9 @@
 /* ============================================================
    PROMO / VOUCHER (fase 4)
    ------------------------------------------------------------
-   Kode diskon yang bisa didaftarkan. Untuk pengujian ada daftar
-   kode bawaan; kode yang didaftarkan disimpan di localStorage
-   dan menimpa kode bawaan dengan nama yang sama.
+   Kode diskon yang bisa didaftarkan. Daftar kode bawaan sengaja
+   dikosongkan karena toko belum memberi diskon; kode yang didaftarkan
+   disimpan di localStorage.
 
    Pemilik toko bisa menetapkan daftar kode resmi dari Owner Panel.
    Daftar itu dikirim lewat content-bridge.js dan dipasang ke modul
@@ -35,33 +35,15 @@
   // Persentase dibatasi supaya total tidak pernah habis total.
   const BATAS_PERSEN = 90;
 
-  // Daftar kode bawaan untuk pengujian.
-  const BAWAAN = [
-    { kode: 'HEMAT10', tipe: 'persen', nilai: 10, catatan: 'Diskon 10 persen' },
-    { kode: 'HEMAT25', tipe: 'persen', nilai: 25, catatan: 'Diskon 25 persen' },
-    { kode: 'POTONG5K', tipe: 'nominal', nilai: 5000, catatan: 'Potong Rp 5.000' },
-    {
-      kode: 'DISKONPOIN',
-      tipe: 'nominal',
-      nilai: 2000,
-      khususPoints: true,
-      catatan: 'Potong Rp 2.000, khusus Points',
-    },
-    {
-      kode: 'HEMAT15',
-      tipe: 'persen',
-      nilai: 15,
-      berlaku: '2026-12-31',
-      catatan: 'Diskon 15 persen sampai 31 Desember 2026',
-    },
-    {
-      kode: 'KEDALUWARSA',
-      tipe: 'persen',
-      nilai: 50,
-      berlaku: '2020-01-01',
-      catatan: 'Kode kedaluwarsa, untuk menguji penolakan',
-    },
-  ];
+  /* Daftar kode bawaan.
+     Toko belum memberi diskon apa pun, jadi daftar ini dikosongkan.
+     Semua kode yang dipakai pembeli harus berasal dari Panel Pemilik
+     (atau daftar yang didaftarkan lewat daftarkan()).
+     Tinggal menambah objek di sini kalau suatu saat butuh kode bawaan
+     lagi, contoh:
+       { kode: 'HEMAT10', tipe: 'persen', nilai: 10, catatan: 'Diskon 10 persen' }
+  */
+  const BAWAAN = [];
 
   /* ============================================================
      BANTUAN

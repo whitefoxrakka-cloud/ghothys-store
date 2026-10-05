@@ -254,7 +254,7 @@
       'Punya Kode Promo?': 'Have a Promo Code?',
       'Masukkan kode untuk memotong harga. Satu order hanya memakai satu kode.':
         'Enter a code to reduce the price. One order can only use one code.',
-      'Contoh: HEMAT10': 'Example: HEMAT10',
+      'Kode promo': 'Promo code',
       'Kode Tersedia': 'Available Codes',
       'Kode': 'Code',
       'Lepas': 'Remove',
